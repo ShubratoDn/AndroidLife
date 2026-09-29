@@ -121,7 +121,6 @@ class MainActivity : HidActivity() {
         buildCbRadio()
         bindListeners()
         applySettings(settingsStore.load(), persist = false)
-        setFullscreen(true)
         render()
         startTickers()
 
@@ -243,7 +242,7 @@ class MainActivity : HidActivity() {
             feedbackClick()
             showSettingsDialog(settings) { applySettings(it) }
         }
-        btnFullscreen.setOnClickListener { feedbackClick(); setFullscreen(!fullscreen) }
+        bindFullscreenButton(btnFullscreen) { feedbackClick() }
         findViewById<View>(R.id.btnHome).setOnClickListener { feedbackClick(); finish() }
         tvModeInfo.setOnClickListener { feedbackClick(); cycleShifterMode() }
 
@@ -520,11 +519,6 @@ class MainActivity : HidActivity() {
         if (!newSettings.soundEnabled && state.engineRunning) sounds.stopEngine()
         state.shifterMode = newSettings.shifterMode
         render()
-    }
-
-    override fun setFullscreen(enabled: Boolean) {
-        super.setFullscreen(enabled)
-        btnFullscreen.setImageResource(if (enabled) R.drawable.ic_minimize else R.drawable.ic_maximize)
     }
 
     // ------------------------------------------------------------------

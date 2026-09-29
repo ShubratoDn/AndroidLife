@@ -103,7 +103,6 @@ class InputActivity : HidActivity() {
         initHeader()
         buildContent()
         applySettings(settings, persist = false)
-        setFullscreen(true)
         ensureBluetooth()
     }
 
@@ -181,6 +180,7 @@ class InputActivity : HidActivity() {
         connectionPill.setOnClickListener { click(); openBluetoothDialog() }
         findViewById<View>(R.id.btnInputSettings).setOnClickListener { click(); showSettingsDialog() }
         findViewById<View>(R.id.btnRotate).setOnClickListener { click(); cycleRotationLock() }
+        bindFullscreenButton(findViewById(R.id.btnFullscreen)) { click() }
     }
 
     /** Portrait headers are narrow: hide the title and move the media keys into the content. */

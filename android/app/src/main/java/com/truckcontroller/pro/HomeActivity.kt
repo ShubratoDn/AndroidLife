@@ -23,6 +23,7 @@ import com.truckcontroller.pro.dimmer.NightScreen
 import com.truckcontroller.pro.haptics.HapticFeedbackHelper
 import com.truckcontroller.pro.input.InputMode
 import com.truckcontroller.pro.model.ConnectionState
+import com.truckcontroller.pro.speed.SpeedTracker
 import com.truckcontroller.pro.ui.ActionTile
 
 /**
@@ -42,6 +43,7 @@ class HomeActivity : HidActivity() {
     private lateinit var tvConnection: TextView
     private lateinit var tvPairPc: TextView
     private lateinit var nightTile: ActionTile
+    private lateinit var speedTile: ActionTile
     private var nightDialog: AlertDialog? = null
 
     // Returning from the "Display over other apps" settings screen
@@ -117,8 +119,8 @@ class HomeActivity : HidActivity() {
             )
         }
 
-        // Night Screen dimmer shares the second row
-        val nightRow = rows[1]
+        // Tools: Night Screen and Speedometer side by side
+        val toolsRow = findViewById<LinearLayout>(R.id.toolsRow)
         nightTile = ActionTile(this).apply {
             title = "Night Screen"
             setIcon(R.drawable.ic_moon)
@@ -128,16 +130,18 @@ class HomeActivity : HidActivity() {
                 showNightScreenDialog()
             }
         }
-        nightRow.addView(
-            nightTile,
-            if (nightRow.orientation == LinearLayout.HORIZONTAL) {
-                LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f).apply { marginStart = dp(10) }
-            } else {
-                LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f).apply { topMargin = dp(8) }
-            }
-        )
+        speedTile = ActionTile(this).apply {
+            title = "Speedometer"
+            setIcon(R.drawable.ic_gauge)
+            accentColor = color(R.color.emerald_400)
+            setOnClickListener { open(Intent(this@HomeActivity, SpeedometerActivity::class.java)) }
+        }
+        toolsRow.addView(speedTile, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f))
+        toolsRow.addView(nightTile, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f).apply {
+            marginStart = dp(10)
+        })
 
-        setFullscreen(true)
+        bindFullscreenButton(findViewById(R.id.btnFullscreen)) { haptics.performButtonClickHaptic() }
         ensureBluetooth()
         if (intent.getBooleanExtra(EXTRA_OPEN_NIGHT_SCREEN, false)) showNightScreenDialog()
     }
@@ -148,12 +152,17 @@ class HomeActivity : HidActivity() {
     }
 
     private fun renderNightTile() {
-        nightTile.subtitle = if (NightScreen.isRunning) {
-            "On · dimmed ${NightScreen.level(this)} %"
-        } else {
-            "Screen dimmer · adjustable from notifications"
-        }
+        nightTile.subtitle = if (NightScreen.isRunning) "On · ${NightScreen.level(this)} %" else "Screen dimmer"
         nightTile.isActive = NightScreen.isRunning
+
+        SpeedTracker.load(this)
+        val trip = SpeedTracker.tripState
+        speedTile.subtitle = when (trip) {
+            SpeedTracker.TripState.RUNNING -> "Recording · ${SpeedTracker.formatDistance(SpeedTracker.distanceM)} ${SpeedTracker.distanceUnit}"
+            SpeedTracker.TripState.PAUSED -> "Trip paused"
+            SpeedTracker.TripState.IDLE -> "GPS speed & trips"
+        }
+        speedTile.isActive = trip != SpeedTracker.TripState.IDLE
     }
 
     // ------------------------------------------------------------------

@@ -21,11 +21,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.ColorRes
-import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
-import androidx.core.view.WindowCompat
-import androidx.core.view.WindowInsetsCompat
-import androidx.core.view.WindowInsetsControllerCompat
 import com.truckcontroller.pro.bluetooth.BluetoothHidService
 import com.truckcontroller.pro.model.ConnectionState
 import com.truckcontroller.pro.ui.BluetoothDialog
@@ -34,14 +30,12 @@ import kotlin.math.roundToInt
 
 /**
  * Base screen for everything that talks to the PC: Bluetooth permissions, enabling Bluetooth,
- * the pairing dialog, fullscreen handling and the shared connection pill.
+ * the pairing dialog and the shared connection pill. Fullscreen comes from [BaseActivity].
  */
-abstract class HidActivity : AppCompatActivity() {
+abstract class HidActivity : BaseActivity() {
 
     protected lateinit var hidService: BluetoothHidService
     private var bluetoothDialog: BluetoothDialog? = null
-    protected var fullscreen = true
-        private set
 
     private val bluetoothPermissions: Array<String> =
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -146,26 +140,6 @@ abstract class HidActivity : AppCompatActivity() {
         }
         if (bluetoothDialog?.dialog?.isShowing == true) return
         bluetoothDialog = showBluetoothDialog(hidService, ::makeDiscoverable)
-    }
-
-    // ------------------------------------------------------------------
-    // Fullscreen
-    // ------------------------------------------------------------------
-
-    protected open fun setFullscreen(enabled: Boolean) {
-        fullscreen = enabled
-        val controller = WindowCompat.getInsetsController(window, window.decorView)
-        if (enabled) {
-            controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-            controller.hide(WindowInsetsCompat.Type.systemBars())
-        } else {
-            controller.show(WindowInsetsCompat.Type.systemBars())
-        }
-    }
-
-    override fun onWindowFocusChanged(hasFocus: Boolean) {
-        super.onWindowFocusChanged(hasFocus)
-        if (hasFocus && fullscreen) setFullscreen(true)
     }
 
     // ------------------------------------------------------------------

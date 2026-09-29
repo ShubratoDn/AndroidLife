@@ -17,6 +17,12 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <!-- Speedometer: GPS speed and trip recording (also in the background while a trip runs) -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <uses-feature android:name="android.hardware.location.gps" android:required="false" />
+
     <!-- Keep screen on while driving ETS2 -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
 
@@ -54,6 +60,18 @@
             android:name=".InputActivity"
             android:exported="false"
             android:configChanges="orientation|keyboardHidden|screenSize|screenLayout|smallestScreenSize" />
+
+        <activity
+            android:name=".SpeedometerActivity"
+            android:exported="false"
+            android:launchMode="singleTop"
+            android:screenOrientation="fullUser" />
+
+        <!-- Trip recording while the screen is off or another app is open -->
+        <service
+            android:name=".speed.TripService"
+            android:exported="false"
+            android:foregroundServiceType="location" />
 
         <!-- Night Screen dimmer overlay -->
         <service

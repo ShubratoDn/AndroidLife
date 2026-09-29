@@ -97,6 +97,12 @@
             android:src="@drawable/ic_settings" />
 
         <ImageButton
+            android:id="@+id/btnFullscreen"
+            style="@style/Cockpit.HeaderIcon"
+            android:contentDescription="Toggle fullscreen"
+            android:src="@drawable/ic_minimize" />
+
+        <ImageButton
             android:id="@+id/btnBluetooth"
             style="@style/Cockpit.HeaderIcon"
             android:contentDescription="Bluetooth connection"
