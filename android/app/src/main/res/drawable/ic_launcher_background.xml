@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- PhoneDeck logo: a deck of cards whose front card is a phone full of tools -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
@@ -7,13 +8,9 @@
     android:viewportHeight="108">
     <path android:pathData="M0,0h108v108h-108z">
         <aapt:attr name="android:fillColor">
-            <gradient
-                android:type="radial"
-                android:centerX="54"
-                android:centerY="46"
-                android:gradientRadius="70">
-                <item android:offset="0" android:color="#FF1E2638" />
-                <item android:offset="1" android:color="#FF0B0E14" />
+            <gradient android:type="radial" android:centerX="54" android:centerY="44" android:gradientRadius="76">
+                <item android:offset="0" android:color="#FF1C2436" />
+                <item android:offset="1" android:color="#FF080B12" />
             </gradient>
         </aapt:attr>
     </path>

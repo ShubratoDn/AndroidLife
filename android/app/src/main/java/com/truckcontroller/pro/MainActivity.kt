@@ -127,6 +127,8 @@ class MainActivity : HidActivity() {
         ensureBluetooth()
     }
 
+    override val offerPairingOnFirstRun = true
+
     override fun onConnectionChanged() = renderConnection()
 
     override fun onPause() {

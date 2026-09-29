@@ -1,10 +1,13 @@
-# TruckPad
+# PhoneDeck
 
-Turn an Android phone into a **Bluetooth steering wheel for Euro Truck Simulator 2** — and into a
-**wireless keyboard, touchpad and presentation remote** for your PC.
+**One app, a whole deck of tools.** PhoneDeck turns an Android phone into a **Bluetooth steering
+wheel for Euro Truck Simulator 2**, a **wireless keyboard, touchpad and presentation remote** for
+your PC, and a **toolbox for the phone itself**: hardware and sensor tests, battery and storage
+analysis, screen time, a speedometer, a QR / barcode scanner and generator, and a screen dimmer.
 
-TruckPad uses the Bluetooth HID Device profile built into Android 9+, so the PC sees a normal
-Bluetooth game controller / keyboard / mouse. **No PC software, drivers or server are needed.**
+The PC-control features use the Bluetooth HID Device profile built into Android 9+, so the PC sees a
+normal Bluetooth game controller / keyboard / mouse. **No PC software, drivers or server are needed.**
+All phone tools work offline and nothing leaves the phone.
 
 📖 **New here? Follow the step-by-step [Installation Guide](INSTALL.md).**
 
@@ -12,42 +15,35 @@ Bluetooth game controller / keyboard / mouse. **No PC software, drivers or serve
 
 ## Getting started
 
-After downloading this project:
-
-1. **Get the APK** — use a ready-made APK from the repository's *Releases* page, or build it:
+1. **Get the APK**: use a ready-made APK from the repository's *Releases* page, or build it:
    ```bash
    git clone https://github.com/ShubratoDn/AndroidLife.git
    cd AndroidLife/android
    ./gradlew assembleDebug        # Windows: gradlew.bat assembleDebug
    ```
    The APK is created at `android/app/build/outputs/apk/debug/app-debug.apk`.
-2. **Install it on the phone** — copy the APK to the phone and open it (allow *Install unknown
+2. **Install it on the phone**: copy the APK to the phone and open it (allow *Install unknown
    apps*), or run `adb install -r app/build/outputs/apk/debug/app-debug.apk`.
-3. **Open TruckPad** and allow the *Nearby devices* (Bluetooth) permission.
-4. **Pair once** — tap **PAIR PC → Make visible**, then add the phone in the PC's Bluetooth
-   settings. The status turns green: *Connected*.
-5. **Pick a mode** on the landing page — the *ETS2 Truck Controller* or one of the keyboard &
-   mouse modes — and start using it.
+3. **Open PhoneDeck.** The home screen lists every tool by category; type in the search box to find
+   one quickly (for example "gps", "qr" or "battery").
+4. **To control a PC**, open the *ETS2 Truck Controller* or a *Keyboard & Mouse* tool. On the first
+   visit it offers to pair: tap **Make visible**, then add the phone in the PC's Bluetooth settings.
+   The status turns green: *Connected*.
 
-For ETS2, connect the phone before launching the game and bind the controls as described in
-[Setting up Euro Truck Simulator 2](#setting-up-euro-truck-simulator-2).
 Detailed instructions and troubleshooting: **[INSTALL.md](INSTALL.md)**.
 
 ---
 
-## Features
+## Tools
 
-### ETS2 Truck Controller
-- **Steering wheel** with 360° – 1800° rotation, auto-centering spring, deadzone and response curve
-- **Gas and brake pedals** as analog axes (drag up to press)
-- **Sequential shifter**, retarder, cruise control (+/−), engine start, parking brake
-- **Cockpit switches**: lights, beacon, hazards, blinkers, wipers, diff lock, lift axle, trailer, camera
-- **Look / pan pad** (analog look axes + 8-way hat) and quick-look buttons
-- **Horn** in the wheel hub and **CB radio** push-to-talk
-- Truck sounds and haptic feedback (gear clunk, air brake, blinker relay, engine idle)
+### Game control
+- **ETS2 Truck Controller**: steering wheel (360°–1800°, auto-centering, deadzone, response curve),
+  analog gas and brake pedals, sequential shifter, retarder, cruise control, engine start, parking
+  brake, cockpit switches (lights, beacon, hazards, blinkers, wipers, diff lock, lift axle, trailer,
+  camera), look pad, horn, CB push-to-talk, truck sounds and haptics
 
-### Keyboard & Mouse
-| Mode | What you get |
+### Keyboard & mouse
+| Tool | What you get |
 |---|---|
 | **Keyboard + Touchpad** | Compact keyboard next to (or, in portrait, below) a touchpad with Left / Middle / Right buttons |
 | **Keyboard** | Standard layout with F-keys, symbols and arrows |
@@ -55,15 +51,29 @@ Detailed instructions and troubleshooting: **[INSTALL.md](INSTALL.md)**.
 | **Keyboard Complete** | Full 104-key layout: F-row, navigation cluster, arrows and numpad |
 | **Presentation Remote** | Next / previous slide, talk timer, start / end show, black screen, laser pointer, pointer pad; the phone's volume keys also change slides |
 
-- **Touchpad gestures**: move, tap to click, two-finger tap for right click, three-finger tap for
-  middle click, two-finger scroll, tap-and-drag, and a scroll strip on the right edge
-- **Modifiers**: tap Ctrl / Shift / Alt once for the next key, twice to lock, or hold them with a
-  second finger; Win works like a real key
-- **Caps Lock / Num Lock** indicators follow the PC's real state
-- **Media keys**: mute, volume, previous, play / pause, next
-- **Portrait and landscape** for every mode, with a rotate button (Auto → Portrait → Landscape);
-  in portrait the keyboard height is adjustable with a drag handle
-- Leaving a screen always releases every key, mouse button and pedal — nothing gets stuck
+Touchpad gestures (tap, two-/three-finger tap, two-finger scroll, drag), sticky and lockable
+modifiers, Caps / Num Lock indicators that follow the PC, media keys, and portrait / landscape for
+every mode with an adjustable keyboard height.
+
+### Phone tools
+| Tool | What it does |
+|---|---|
+| **Device Info** | Model, Android version, processor, RAM (live), display, cameras and hardware features |
+| **Battery Info** | Health, temperature, voltage, design vs. estimated capacity, wear, cycle count, charger rating |
+| **Charging Meter** | Live charge / discharge current, power, min / max and a current graph with state colours |
+| **Storage Analyzer** | Space used by apps, photos, videos and audio; largest files and apps |
+| **Sensor Tester** | 12 hardware tests (GPS, Wi-Fi, Bluetooth, NFC, mobile network, cameras, flashlight, fingerprint & face, microphones, speakers, buttons, infrared), vibration / multi-touch / display / metal-detector tests, and a live test for every sensor. Each test explains what it does and how to test it |
+| **Screen Time** | Daily and weekly screen time, unlocks, longest session and per-app usage |
+
+### Utilities
+| Tool | What it does |
+|---|---|
+| **Speedometer** | GPS speed with trips (distance, time, max and average speed) and saved trip history |
+| **Night Screen** | Dims the screen below the lowest brightness; adjustable from the notification and Quick Settings |
+| **Scanner** | Reads QR codes and barcodes, with actions for links, Wi-Fi, contacts, and typing the code on the PC |
+| **QR & Barcode Maker** | QR codes in many designs, plus Code 128, EAN-13, EAN-8, UPC-A and Code 39 barcodes |
+
+A fullscreen toggle is available on every screen and is remembered.
 
 ---
 
@@ -71,8 +81,8 @@ Detailed instructions and troubleshooting: **[INSTALL.md](INSTALL.md)**.
 
 | | |
 |---|---|
-| Phone | Android 9 (API 28) or newer with Bluetooth. Some manufacturer ROMs disable the Bluetooth HID Device profile; the app then stays "Offline" |
-| PC | Any computer with Bluetooth (tested with Windows 11) |
+| Phone | Android 9 (API 28) or newer. PC control needs Bluetooth; some manufacturer systems disable the Bluetooth HID Device profile, in which case the PC tools stay "Offline" (all phone tools still work) |
+| PC | Any computer with Bluetooth (tested with Windows 11), only for the game and keyboard & mouse tools |
 | Build | JDK 17+, Android SDK with platform 35 and build tools 35 |
 
 ---
@@ -103,21 +113,25 @@ On Xiaomi / MIUI phones also enable **Developer options → Install via USB**.
 
 ## Pairing with the PC
 
-1. Open TruckPad and allow the **Nearby devices** (Bluetooth) permission.
-2. Tap **PAIR PC → Make visible**.
+1. Open the **ETS2 Truck Controller** or any **Keyboard & Mouse** tool and allow the **Nearby
+   devices** (Bluetooth) permission.
+2. In the pairing dialog (or the Bluetooth button in the header) tap **Make visible**.
 3. On the PC open **Bluetooth settings → Add device** and select the phone.
 4. The status pill turns green: **Connected**.
 
-After the first pairing the app reconnects to the same PC automatically. One connection is
-shared by all modes, so you can switch between the truck controller and the keyboard & mouse
-screens freely.
+After the first pairing the app reconnects to the same PC automatically. One connection is shared
+by all PC tools, so you can switch between the truck controller and the keyboard & mouse screens
+freely.
 
-> **Re-pair after updates that change the controller layout.** The PC stores the device
-> description when pairing. If the app shows *Connected* but nothing reacts, remove the phone in
-> the PC's Bluetooth settings, unpair the PC on the phone, and pair again.
+> On the PC the controller is named **TruckPad** (its original name), so existing pairings and
+> ETS2 bindings keep working.
 
-To check the controller on Windows, press **Win + R**, run `joy.cpl`, select **TruckPad** and
-open **Properties**.
+> **Re-pair after updates that change the controller layout.** The PC stores the device description
+> when pairing. If the app shows *Connected* but nothing reacts, remove the phone in the PC's
+> Bluetooth settings, unpair the PC on the phone, and pair again.
+
+To check the controller on Windows, press **Win + R**, run `joy.cpl`, select **TruckPad** and open
+**Properties**.
 
 ---
 
@@ -136,7 +150,7 @@ open **Properties**.
 | Look up / down | Look pad, up / down | Ry (`joy.ry`) |
 
 Use **full range** for the pedals; if a pedal reads 100 % while released, enable **Invert** for it.
-Set the game's steering non-linearity to 0 % — the app already applies its own curve.
+Set the game's steering non-linearity to 0 %; the app already applies its own curve.
 
 4. Bind the buttons: in the app open **Button mappings** (sliders icon in the header) and tap a row
    to send that button while ETS2 is waiting for input.
@@ -183,10 +197,16 @@ motion are coalesced to about 120 reports per second.
 ```
 android/                              Android app (Kotlin)
   app/src/main/java/com/truckcontroller/pro/
-    HomeActivity.kt                   Landing page
+    HomeActivity.kt                   Home screen: searchable tool hub
     MainActivity.kt                   ETS2 truck controller screen
-    InputActivity.kt                  Keyboard & mouse modes
+    InputActivity.kt                  Keyboard & mouse tools
     HidActivity.kt                    Shared Bluetooth permission / pairing / header logic
+    ToolActivity.kt                   Shared layout for the phone tools
+    DeviceInfoActivity.kt, BatteryInfoActivity.kt, BatteryActivity.kt,
+    StorageActivity.kt, ScreenTimeActivity.kt, SensorTesterActivity.kt,
+    SpeedometerActivity.kt, ScannerActivity.kt, QrGeneratorActivity.kt
+    hardware/                         Hardware tests (GPS, Wi-Fi, Bluetooth, NFC, camera, audio …)
+    sensors/, battery/, screentime/, speed/, scan/, qr/, dimmer/
     bluetooth/BluetoothHidService.kt  HID descriptor and report sending
     input/                            Keyboard layouts, keyboard view, touchpad view
     ui/                               Steering wheel, pedals, look pad, tiles, dialogs
@@ -210,9 +230,10 @@ npm run dev        # http://localhost:3000
 
 | Problem | Fix |
 |---|---|
-| Stays **Offline** after pairing | Tap **PAIR PC** and select the PC, or remove and re-pair the phone |
-| PC cannot find the phone | Tap **Make visible** again — visibility lasts 2 minutes |
+| PC tools stay **Offline** after pairing | Tap the Bluetooth button in the header and select the PC, or remove and re-pair the phone |
+| PC cannot find the phone | Tap **Make visible** again; visibility lasts 2 minutes |
 | *Connected*, but keys / mouse / controller do nothing | Re-pair (see above); the PC still has an older device description |
 | ETS2 does not list the controller | Connect the phone first, then start the game |
 | Pedals inverted or stuck at 100 % | Enable **Invert** for that axis in ETS2 |
-| The app's gear / light state differs from the game | The app shows its own taps only; keyboard input in the game is not reflected |
+| A phone tool says a permission is needed | Tap **Allow**, or enable it in the app's settings; each tool only asks for what it uses |
+| A hardware test says "Not on this phone" | The phone doesn't report that component (for example no infrared blaster) |

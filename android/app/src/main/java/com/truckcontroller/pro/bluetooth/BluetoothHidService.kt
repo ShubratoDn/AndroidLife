@@ -49,6 +49,7 @@ class BluetoothHidService private constructor(private val context: Context) {
         private const val AXIS_CENTER = 128
         private const val PULSE_MS = 70L
         private const val CLICK_MS = 35L
+        private const val TYPE_KEY_MS = 12L
         private const val MIN_REPORT_INTERVAL_MS = 8L // ~120 Hz
         private const val LOOK_HAT_THRESHOLD = 0.45f
         private const val PREFS = "bluetooth_hid"
@@ -399,6 +400,7 @@ class BluetoothHidService private constructor(private val context: Context) {
 
     @SuppressLint("MissingPermission")
     private fun registerHidApp() {
+        // The PC-visible controller keeps its original name so existing pairings and ETS2 bindings still work
         val sdp = BluetoothHidDeviceAppSdpSettings(
             "TruckPad",
             "Keyboard, Mouse & ETS2 Controller",
@@ -595,6 +597,47 @@ class BluetoothHidService private constructor(private val context: Context) {
         sender.post {
             send(REPORT_ID_KEYBOARD, keyboardReport(modifiers or kbModifiers, keys + kbKeys))
             sender.postDelayed({ send(REPORT_ID_KEYBOARD, keyboardReport(kbModifiers, kbKeys)) }, PULSE_MS)
+        }
+    }
+
+    /**
+     * Types [text] on the PC through the keyboard, one character at a time (US layout).
+     * Characters that have no key on a US keyboard are skipped. Returns the number typed.
+     */
+    fun typeText(text: String): Int {
+        val strokes = text.mapNotNull { usKeyFor(it) }
+        sender.post {
+            var at = SystemClock.uptimeMillis()
+            strokes.forEach { (usage, shift) ->
+                val mods = if (shift) 0x02 else 0
+                sender.postAtTime({ send(REPORT_ID_KEYBOARD, keyboardReport(mods, intArrayOf(usage))) }, at)
+                sender.postAtTime({ send(REPORT_ID_KEYBOARD, keyboardReport(kbModifiers, kbKeys)) }, at + TYPE_KEY_MS)
+                at += TYPE_KEY_MS * 2
+            }
+        }
+        return strokes.size
+    }
+
+    /** Key usage and whether Shift is needed for [c] on a US keyboard layout. */
+    private fun usKeyFor(c: Char): Pair<Int, Boolean>? = when (c) {
+        in 'a'..'z' -> 0x04 + (c - 'a') to false
+        in 'A'..'Z' -> 0x04 + (c - 'A') to true
+        in '1'..'9' -> 0x1E + (c - '1') to false
+        '0' -> 0x27 to false
+        '\n' -> 0x28 to false
+        '\t' -> 0x2B to false
+        ' ' -> 0x2C to false
+        else -> {
+            val plain = "-=[]\\;'`,./"
+            val shifted = "_+{}|:\"~<>?"
+            val plainUsages = intArrayOf(0x2D, 0x2E, 0x2F, 0x30, 0x31, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38)
+            val digitsShifted = "!@#$%^&*()"
+            when {
+                plain.indexOf(c) >= 0 -> plainUsages[plain.indexOf(c)] to false
+                shifted.indexOf(c) >= 0 -> plainUsages[shifted.indexOf(c)] to true
+                digitsShifted.indexOf(c) >= 0 -> (if (c == ')') 0x27 else 0x1E + digitsShifted.indexOf(c)) to true
+                else -> null
+            }
         }
     }
 

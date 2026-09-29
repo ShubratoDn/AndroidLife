@@ -1,11 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- PhoneDeck logo: a deck of cards whose front card is a phone full of tools -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <path
-        android:fillColor="#FF000000"
-        android:fillType="evenOdd"
-        android:pathData="M39,25h30a8,8 0 0 1 8,8v41a8,8 0 0 1 -8,8h-30a8,8 0 0 1 -8,-8v-41a8,8 0 0 1 8,-8ZM26.0,36h2.0a1.5,1.5 0 0 1 1.5,1.5v9.0a1.5,1.5 0 0 1 -1.5,1.5h-2.0a1.5,1.5 0 0 1 -1.5,-1.5v-9.0a1.5,1.5 0 0 1 1.5,-1.5ZM80.0,36h2.0a1.5,1.5 0 0 1 1.5,1.5v9.0a1.5,1.5 0 0 1 -1.5,1.5h-2.0a1.5,1.5 0 0 1 -1.5,-1.5v-9.0a1.5,1.5 0 0 1 1.5,-1.5ZM35.5,78h5.0a2.5,2.5 0 0 1 2.5,2.5v3.0a2.5,2.5 0 0 1 -2.5,2.5h-5.0a2.5,2.5 0 0 1 -2.5,-2.5v-3.0a2.5,2.5 0 0 1 2.5,-2.5ZM67.5,78h5.0a2.5,2.5 0 0 1 2.5,2.5v3.0a2.5,2.5 0 0 1 -2.5,2.5h-5.0a2.5,2.5 0 0 1 -2.5,-2.5v-3.0a2.5,2.5 0 0 1 2.5,-2.5ZM40,30h28a4,4 0 0 1 4,4v12a4,4 0 0 1 -4,4h-28a4,4 0 0 1 -4,-4v-12a4,4 0 0 1 4,-4ZM40.9,57.0h5.2a1.4,1.4 0 0 1 1.4,1.4v3.7a1.4,1.4 0 0 1 -1.4,1.4h-5.2a1.4,1.4 0 0 1 -1.4,-1.4v-3.7a1.4,1.4 0 0 1 1.4,-1.4ZM51.4,57.0h5.2a1.4,1.4 0 0 1 1.4,1.4v3.7a1.4,1.4 0 0 1 -1.4,1.4h-5.2a1.4,1.4 0 0 1 -1.4,-1.4v-3.7a1.4,1.4 0 0 1 1.4,-1.4ZM61.9,57.0h5.2a1.4,1.4 0 0 1 1.4,1.4v3.7a1.4,1.4 0 0 1 -1.4,1.4h-5.2a1.4,1.4 0 0 1 -1.4,-1.4v-3.7a1.4,1.4 0 0 1 1.4,-1.4ZM40.9,66.0h5.2a1.4,1.4 0 0 1 1.4,1.4v3.7a1.4,1.4 0 0 1 -1.4,1.4h-5.2a1.4,1.4 0 0 1 -1.4,-1.4v-3.7a1.4,1.4 0 0 1 1.4,-1.4ZM51.4,66.0h5.2a1.4,1.4 0 0 1 1.4,1.4v3.7a1.4,1.4 0 0 1 -1.4,1.4h-5.2a1.4,1.4 0 0 1 -1.4,-1.4v-3.7a1.4,1.4 0 0 1 1.4,-1.4ZM61.9,66.0h5.2a1.4,1.4 0 0 1 1.4,1.4v3.7a1.4,1.4 0 0 1 -1.4,1.4h-5.2a1.4,1.4 0 0 1 -1.4,-1.4v-3.7a1.4,1.4 0 0 1 1.4,-1.4Z" />
+    <group android:scaleX="0.8" android:scaleY="0.8" android:pivotX="54" android:pivotY="54" android:translateX="4.5">
+        <group android:rotation="-18" android:pivotX="57" android:pivotY="84">
+            <path android:fillColor="#73FFFFFF" android:pathData="M48,24h18a8,8 0 0 1 8,8v44a8,8 0 0 1 -8,8h-18a8,8 0 0 1 -8,-8v-44a8,8 0 0 1 8,-8Z" />
+        </group>
+        <group android:rotation="-9" android:pivotX="57" android:pivotY="84">
+            <path android:fillColor="#B2FFFFFF" android:pathData="M48,24h18a8,8 0 0 1 8,8v44a8,8 0 0 1 -8,8h-18a8,8 0 0 1 -8,-8v-44a8,8 0 0 1 8,-8Z" />
+        </group>
+        <path android:fillColor="#FFFFFFFF" android:fillType="evenOdd" android:pathData="M48,24h18a8,8 0 0 1 8,8v44a8,8 0 0 1 -8,8h-18a8,8 0 0 1 -8,-8v-44a8,8 0 0 1 8,-8ZM48,29h18a5,5 0 0 1 5,5v40a5,5 0 0 1 -5,5h-18a5,5 0 0 1 -5,-5v-40a5,5 0 0 1 5,-5Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M48.4,34h4.7a2.4,2.4 0 0 1 2.4,2.4v4.7a2.4,2.4 0 0 1 -2.4,2.4h-4.7a2.4,2.4 0 0 1 -2.4,-2.4v-4.7a2.4,2.4 0 0 1 2.4,-2.4Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M60.9,34h4.7a2.4,2.4 0 0 1 2.4,2.4v4.7a2.4,2.4 0 0 1 -2.4,2.4h-4.7a2.4,2.4 0 0 1 -2.4,-2.4v-4.7a2.4,2.4 0 0 1 2.4,-2.4Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M48.4,46.5h4.7a2.4,2.4 0 0 1 2.4,2.4v4.7a2.4,2.4 0 0 1 -2.4,2.4h-4.7a2.4,2.4 0 0 1 -2.4,-2.4v-4.7a2.4,2.4 0 0 1 2.4,-2.4Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M60.9,46.5h4.7a2.4,2.4 0 0 1 2.4,2.4v4.7a2.4,2.4 0 0 1 -2.4,2.4h-4.7a2.4,2.4 0 0 1 -2.4,-2.4v-4.7a2.4,2.4 0 0 1 2.4,-2.4Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M48.4,59h4.7a2.4,2.4 0 0 1 2.4,2.4v4.7a2.4,2.4 0 0 1 -2.4,2.4h-4.7a2.4,2.4 0 0 1 -2.4,-2.4v-4.7a2.4,2.4 0 0 1 2.4,-2.4Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M60.9,59h4.7a2.4,2.4 0 0 1 2.4,2.4v4.7a2.4,2.4 0 0 1 -2.4,2.4h-4.7a2.4,2.4 0 0 1 -2.4,-2.4v-4.7a2.4,2.4 0 0 1 2.4,-2.4Z" />
+    </group>
 </vector>

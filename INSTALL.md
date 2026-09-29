@@ -1,18 +1,19 @@
-# TruckPad — Installation Guide
+# PhoneDeck — Installation Guide
 
-This guide takes you from downloading TruckPad to driving in Euro Truck Simulator 2 or using your
-phone as a keyboard and mouse.
+This guide takes you from downloading PhoneDeck to using its phone tools, driving in Euro Truck
+Simulator 2, or using your phone as a keyboard and mouse.
 
 - [1. What you need](#1-what-you-need)
 - [2. Get the app](#2-get-the-app)
 - [3. Install the app on your phone](#3-install-the-app-on-your-phone)
 - [4. First launch](#4-first-launch)
 - [5. Pair the phone with your PC](#5-pair-the-phone-with-your-pc)
-- [6. Check that the PC sees TruckPad](#6-check-that-the-pc-sees-truckpad)
+- [6. Check that the PC sees the controller](#6-check-that-the-pc-sees-the-controller)
 - [7. Set up Euro Truck Simulator 2](#7-set-up-euro-truck-simulator-2)
-- [8. Use the keyboard & mouse modes](#8-use-the-keyboard--mouse-modes)
-- [9. Updating and uninstalling](#9-updating-and-uninstalling)
-- [10. Troubleshooting](#10-troubleshooting)
+- [8. Use the keyboard & mouse tools](#8-use-the-keyboard--mouse-tools)
+- [9. Permissions](#9-permissions)
+- [10. Updating and uninstalling](#10-updating-and-uninstalling)
+- [11. Troubleshooting](#11-troubleshooting)
 
 ---
 
@@ -20,12 +21,12 @@ phone as a keyboard and mouse.
 
 | Item | Details |
 |---|---|
-| Android phone | Android 9 or newer, with Bluetooth |
-| PC | Windows 10 / 11, Linux or macOS with Bluetooth (built in or a USB adapter) |
+| Android phone | Android 9 or newer |
+| PC | Windows 10 / 11, Linux or macOS with Bluetooth; only for the game and keyboard & mouse tools |
 | Euro Truck Simulator 2 | Only needed for the truck controller |
 | To build the app yourself (optional) | JDK 17 or newer and the Android SDK (platform 35) |
 
-No software has to be installed on the PC. TruckPad connects as a standard Bluetooth device.
+No software has to be installed on the PC. PhoneDeck connects as a standard Bluetooth device.
 
 ---
 
@@ -35,7 +36,7 @@ You can either use a ready-made APK file or build it from the source code.
 
 ### Option A — Use a ready-made APK
 
-If an APK file (`TruckPad.apk` or `app-debug.apk`) is attached to the repository's **Releases**
+If an APK file (`PhoneDeck.apk` or `app-debug.apk`) is attached to the repository's **Releases**
 page, download it to your phone or PC and continue with
 [step 3](#3-install-the-app-on-your-phone).
 
@@ -55,7 +56,7 @@ page, download it to your phone or PC and continue with
    # Linux / macOS example
    # sdk.dir=/home/<you>/Android/Sdk
    ```
-   If you use Android Studio, simply open the `android` folder in it instead — Android Studio creates
+   If you use Android Studio, simply open the `android` folder in it instead; Android Studio creates
    this file for you.
 
 3. Build the APK:
@@ -80,7 +81,7 @@ page, download it to your phone or PC and continue with
 1. Copy `app-debug.apk` to the phone (USB cable, cloud drive, messenger, e-mail …).
 2. Open it with the phone's **Files** app.
 3. When asked, allow **Install unknown apps** for the Files app, then tap **Install**.
-4. If Play Protect warns about an unknown developer, choose **Install anyway**.
+4. If the phone warns about an unknown developer, choose **Install anyway**.
 
 ### Option B — Install over USB with adb
 
@@ -95,56 +96,65 @@ page, download it to your phone or PC and continue with
    ```
    If the phone shows an install prompt, tap **Install**.
 
-After installation, **TruckPad** appears in the app drawer with an orange truck icon.
+After installation, **PhoneDeck** appears in the app drawer. Its icon is a fanned deck of cards
+with a phone full of colourful tool tiles in front.
 
 ---
 
 ## 4. First launch
 
-1. Open **TruckPad**.
-2. Allow the **Nearby devices** permission — it is needed for Bluetooth.
-3. If Bluetooth is off, TruckPad asks to turn it on; tap **Allow**.
-4. The landing page opens. On the very first launch the **Bluetooth HID Connection** dialog opens
-   automatically to guide you through pairing.
+1. Open **PhoneDeck**.
+2. The home screen lists every tool in four categories:
+   - **Game control**: *ETS2 Truck Controller*
+   - **Keyboard & mouse**: *Keyboard + Touchpad*, *Keyboard*, *Num Pad + Touchpad*,
+     *Keyboard Complete* and *Presentation Remote*
+   - **Phone tools**: *Device Info*, *Battery Info*, *Charging Meter*, *Storage Analyzer*,
+     *Sensor Tester* and *Screen Time*
+   - **Utilities**: *Speedometer*, *Night Screen*, *Scanner* and *QR & Barcode Maker*
+3. Use the **search box** at the top to find a tool by name or by what it does (for example
+   "fingerprint", "wifi" or "trip").
+4. The button at the top right switches **fullscreen** on or off for every screen.
 
-The landing page has two sections:
-
-- **Game controller** — *ETS2 Truck Controller*
-- **Keyboard & mouse** — *Keyboard + Touchpad*, *Keyboard*, *Num Pad + Touchpad*,
-  *Keyboard Complete* and *Presentation Remote*
+The phone tools and utilities work straight away. The PC tools need pairing once (next step).
 
 ---
 
 ## 5. Pair the phone with your PC
 
-Pairing is done **once**. All modes share the same connection.
+Pairing is done **once**. All PC tools share the same connection.
 
-1. In TruckPad tap **PAIR PC**, then **Make visible** and allow it. The phone stays visible for
+1. Open the **ETS2 Truck Controller** or any **Keyboard & Mouse** tool and allow the **Nearby
+   devices** permission. If Bluetooth is off, the app asks to turn it on.
+2. On the first visit the **Bluetooth HID Connection** dialog opens by itself (later, tap the
+   Bluetooth button in the header). Tap **Make visible** and allow it. The phone stays visible for
    2 minutes.
-2. On the PC:
+3. On the PC:
    - **Windows 11**: *Settings → Bluetooth & devices → Add device → Bluetooth*
    - **Windows 10**: *Settings → Devices → Add Bluetooth or other device → Bluetooth*
    - **macOS / Linux**: open the Bluetooth settings and look for new devices
-3. Select your phone and confirm that the pairing code matches on both screens.
-4. TruckPad shows a green **Connected: \<PC name\>** status.
+4. Select your phone and confirm that the pairing code matches on both screens.
+5. The app shows a green **Connected: \<PC name\>** status.
 
-From now on TruckPad reconnects to this PC automatically when you open it. If it does not, tap
-**PAIR PC** and tap the PC's name in the list of paired devices.
+From now on the app reconnects to this PC automatically. If it does not, tap the Bluetooth button in
+the header and tap the PC's name in the list of paired devices.
 
-> **After updating TruckPad**, if it says *Connected* but the PC does not react, the PC is still
+> **After updating PhoneDeck**, if it says *Connected* but the PC does not react, the PC is still
 > using the old device description. Remove the phone from the PC's Bluetooth settings, unpair the
 > PC on the phone, and pair again.
 
 ---
 
-## 6. Check that the PC sees TruckPad
+## 6. Check that the PC sees the controller
+
+On the PC the controller keeps its original name, **TruckPad**, so earlier pairings and ETS2
+bindings keep working.
 
 On Windows:
 
 1. Press **Win + R**, type `joy.cpl` and press **Enter**.
 2. Select **TruckPad** and click **Properties**.
 3. Open the **ETS2 Truck Controller** in the app and turn the wheel, press the pedals and tap
-   buttons — the bars and button numbers in the window should react.
+   buttons; the bars and button numbers in the window should react.
 
 For the keyboard & mouse, open **Keyboard + Touchpad** and type into any text field on the PC or
 move the pointer with the touchpad.
@@ -153,12 +163,12 @@ move the pointer with the touchpad.
 
 ## 7. Set up Euro Truck Simulator 2
 
-1. Connect TruckPad **before** starting the game (the game only detects controllers at startup).
+1. Connect the phone **before** starting the game (the game only detects controllers at startup).
 2. In ETS2 open **Options → Controls**.
 3. Choose a *keyboard + joystick* control setup and select **TruckPad** as the input device.
-4. Bind the axes: click the action in the game, then move the control in TruckPad.
+4. Bind the axes: click the action in the game, then move the control in the app.
 
-   | ETS2 action | Move in TruckPad |
+   | ETS2 action | Move in the app |
    |---|---|
    | Steering | Turn the wheel |
    | Throttle | Slide the **GAS** pedal up |
@@ -168,10 +178,10 @@ move the pointer with the touchpad.
 
    - Use **full range** for throttle and brake. If a pedal reads 100 % while you are not touching
      it, switch on **Invert** for that pedal.
-   - Set **steering non-linearity to 0 %** — TruckPad applies its own curve (adjustable in the app's
+   - Set **steering non-linearity to 0 %**; the app applies its own curve (adjustable in the app's
      settings).
 
-5. Bind the buttons: click an action in the game, then in TruckPad tap the **sliders icon (Button
+5. Bind the buttons: click an action in the game, then in the app tap the **sliders icon (Button
    mappings)** in the header and tap the row with the same name. The full button list is in the
    [README](README.md#setting-up-euro-truck-simulator-2).
 
@@ -179,11 +189,11 @@ move the pointer with the touchpad.
 
 ---
 
-## 8. Use the keyboard & mouse modes
+## 8. Use the keyboard & mouse tools
 
-Open a mode from the landing page. Every screen works in **portrait and landscape**; the rotate
+Open a tool from the home screen. Every screen works in **portrait and landscape**; the rotate
 button in the header switches between *Auto-rotate*, *Portrait* and *Landscape* (remembered per
-mode). The 🏠 button returns to the landing page.
+tool). The 🏠 button returns to the home screen.
 
 **Touchpad**
 
@@ -200,7 +210,7 @@ mode). The 🏠 button returns to the landing page.
 **Keyboard**
 
 - **Ctrl / Shift / Alt**: tap once to apply to the next key, tap twice to lock (a bar appears under
-  the key), tap again to release — or hold with one finger and press a key with another.
+  the key), tap again to release, or hold with one finger and press a key with another.
 - **Win** works like a real key: tap it to open the Start menu.
 - In portrait, drag the **grip bar** above the keys to change the keyboard height.
 - Media keys (mute, volume, previous, play / pause, next) are in the header (landscape) or in the
@@ -208,7 +218,7 @@ mode). The 🏠 button returns to the landing page.
 
 **Presentation Remote**
 
-- **NEXT SLIDE / PREVIOUS** send Page Down / Page Up — this works in PowerPoint, PDF viewers and
+- **NEXT SLIDE / PREVIOUS** send Page Down / Page Up; this works in PowerPoint, PDF viewers and
   most slide apps.
 - The phone's **volume keys** also change slides (can be turned off in settings).
 - **START** (F5), **CURRENT** (Shift + F5), **BLACK** (B), **END** (Esc), **LASER** (Ctrl + L),
@@ -219,26 +229,48 @@ vibration and volume-key slide control.
 
 ---
 
-## 9. Updating and uninstalling
+## 9. Permissions
 
-- **Update**: install the new APK over the old one (step 3). Your settings are kept. If the new
-  version changes the controller layout, re-pair the phone (see [step 5](#5-pair-the-phone-with-your-pc))
-  and check the controller in ETS2 once.
-- **Uninstall**: long-press the TruckPad icon → **Uninstall**. Also remove the phone from the PC's
+PhoneDeck asks for a permission only when you open a tool that needs it, and everything stays on
+the phone.
+
+| Permission | Used by |
+|---|---|
+| Nearby devices (Bluetooth) | PC tools, Bluetooth test |
+| Location | Speedometer, GPS / Wi-Fi / Bluetooth tests (Android requires it to read satellites and nearby networks) |
+| Camera | Scanner, camera test |
+| Microphone | Microphone test (recordings stay in memory and are never saved) |
+| Phone | Mobile network test (network type and SIM status only) |
+| Physical activity | Step counter sensor test |
+| Photos, videos and audio | Storage Analyzer |
+| Usage access | Screen Time and app sizes in Storage Analyzer (enabled in a system settings screen) |
+| Display over other apps | Night Screen |
+| Notifications | Night Screen and Speedometer trip controls |
+
+---
+
+## 10. Updating and uninstalling
+
+- **Update**: install the new APK over the old one (step 3). Your settings, trips and history are
+  kept. If the new version changes the controller layout, re-pair the phone (see
+  [step 5](#5-pair-the-phone-with-your-pc)) and check the controller in ETS2 once.
+- **Uninstall**: long-press the PhoneDeck icon → **Uninstall**. Also remove the phone from the PC's
   Bluetooth device list.
 
 ---
 
-## 10. Troubleshooting
+## 11. Troubleshooting
 
 | Problem | Solution |
 |---|---|
 | "App not installed" | Uninstall the old version first, or check that the APK downloaded completely |
 | `INSTALL_FAILED_USER_RESTRICTED` over adb | Xiaomi: enable **Install via USB**; keep the phone unlocked and tap **Install** on the prompt |
-| Status stays **Offline** | Tap **PAIR PC** and select the PC. If it never connects, your phone's system may not support the Bluetooth HID Device profile |
-| The PC cannot find the phone | Tap **Make visible** again (visibility lasts 2 minutes) and keep TruckPad open |
+| PC tools stay **Offline** | Tap the Bluetooth button in the header and select the PC. If it never connects, your phone's system may not support the Bluetooth HID Device profile (the phone tools still work) |
+| The PC cannot find the phone | Tap **Make visible** again (visibility lasts 2 minutes) and keep the app open |
 | *Connected*, but nothing happens on the PC | Remove and re-pair the phone (step 5) |
-| ETS2 does not show TruckPad | Connect first, then start the game |
+| ETS2 does not show the controller | Connect first, then start the game |
 | Menu cursor moves by itself in ETS2 | Clear any old axis bindings in *Options → Controls* and bind the axes again |
 | A pedal is always at 100 % | Enable **Invert** for that pedal in ETS2 |
 | Keyboard types wrong symbols | Set the PC's keyboard layout to **English (US)** |
+| A tool keeps asking for a permission | Allow it in *Settings → Apps → PhoneDeck → Permissions* |
+| A hardware test says "Not on this phone" | The phone doesn't report that component (for example no infrared blaster or NFC) |

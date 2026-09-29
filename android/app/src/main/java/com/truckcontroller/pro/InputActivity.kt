@@ -158,6 +158,8 @@ class InputActivity : HidActivity() {
         handler.removeCallbacksAndMessages(null)
     }
 
+    override val offerPairingOnFirstRun = true
+
     override fun onConnectionChanged() {
         if (::connectionPill.isInitialized) renderConnectionPill(connectionPill, connectionDot, tvConnection)
     }

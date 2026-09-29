@@ -40,4 +40,13 @@ dependencies {
     implementation("androidx.appcompat:appcompat:1.6.1")
     implementation("com.google.android.material:material:1.11.0")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
+
+    // QR / barcode scanner: CameraX preview + zxing-cpp decoder (offline, no Play Services)
+    val cameraX = "1.3.4"
+    implementation("androidx.camera:camera-camera2:$cameraX")
+    implementation("androidx.camera:camera-lifecycle:$cameraX")
+    implementation("androidx.camera:camera-view:$cameraX")
+    implementation("io.github.zxing-cpp:android:2.2.0")
+    // QR generator: encoder only, drawn with custom designs
+    implementation("io.nayuki:qrcodegen:1.8.0")
 }

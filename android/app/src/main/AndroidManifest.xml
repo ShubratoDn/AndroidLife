@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <!-- Android Bluetooth HID Stack Permissions -->
     <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
@@ -23,6 +24,59 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
     <uses-feature android:name="android.hardware.location.gps" android:required="false" />
 
+    <!-- QR / barcode scanner -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <!-- Saving generated QR codes to Pictures on Android 9 (newer versions need no permission) -->
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+
+    <!-- Screen Time: read Android's usage history (granted by the user in Usage access settings) -->
+    <uses-permission
+        android:name="android.permission.PACKAGE_USAGE_STATS"
+        tools:ignore="ProtectedPermissions" />
+
+    <!-- Screen Time shows names and icons of launchable apps -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.HOME" />
+        </intent>
+    </queries>
+
+    <!-- Storage Analyzer: sizes of photos, videos and music -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+
+    <!-- Sensor Tester: step counter / detector -->
+    <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
+
+    <!-- Sensor Tester hardware tests: Wi-Fi, NFC, fingerprint, infrared, microphone, speaker routing, mobile network -->
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.NFC" />
+    <uses-permission android:name="android.permission.USE_BIOMETRIC" />
+    <uses-permission android:name="android.permission.TRANSMIT_IR" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+    <uses-feature android:name="android.hardware.nfc" android:required="false" />
+    <uses-feature android:name="android.hardware.consumerir" android:required="false" />
+    <uses-feature android:name="android.hardware.microphone" android:required="false" />
+    <uses-feature android:name="android.hardware.telephony" android:required="false" />
+    <uses-feature android:name="android.hardware.wifi" android:required="false" />
+    <uses-feature android:name="android.hardware.fingerprint" android:required="false" />
+
     <!-- Keep screen on while driving ETS2 -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
 
@@ -33,7 +87,7 @@
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
-        android:label="TruckPad"
+        android:label="PhoneDeck"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.TruckController">
@@ -66,6 +120,70 @@
             android:exported="false"
             android:launchMode="singleTop"
             android:screenOrientation="fullUser" />
+
+        <activity
+            android:name=".ScannerActivity"
+            android:exported="false"
+            android:screenOrientation="fullUser" />
+
+        <activity
+            android:name=".QrGeneratorActivity"
+            android:exported="false"
+            android:screenOrientation="fullUser"
+            android:windowSoftInputMode="adjustResize" />
+
+        <!-- Shares generated QR images with other apps -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
+        <activity
+            android:name=".BatteryActivity"
+            android:exported="false"
+            android:screenOrientation="fullUser" />
+
+        <activity
+            android:name=".ScreenTimeActivity"
+            android:exported="false"
+            android:screenOrientation="fullUser" />
+
+        <!-- Phone tools -->
+        <activity
+            android:name=".DeviceInfoActivity"
+            android:exported="false"
+            android:screenOrientation="fullUser" />
+        <activity
+            android:name=".BatteryInfoActivity"
+            android:exported="false"
+            android:screenOrientation="fullUser" />
+        <activity
+            android:name=".StorageActivity"
+            android:exported="false"
+            android:screenOrientation="fullUser" />
+        <activity
+            android:name=".SensorTesterActivity"
+            android:exported="false"
+            android:screenOrientation="fullUser" />
+
+        <!-- Sensor Tester: hardware tests -->
+        <activity android:name=".hardware.GpsTestActivity" android:exported="false" android:screenOrientation="fullUser" />
+        <activity android:name=".hardware.WifiTestActivity" android:exported="false" android:screenOrientation="fullUser" />
+        <activity android:name=".hardware.BluetoothTestActivity" android:exported="false" android:screenOrientation="fullUser" />
+        <activity android:name=".hardware.NfcTestActivity" android:exported="false" android:screenOrientation="fullUser" />
+        <activity android:name=".hardware.CellularTestActivity" android:exported="false" android:screenOrientation="fullUser" />
+        <activity android:name=".hardware.CameraTestActivity" android:exported="false" android:screenOrientation="fullUser" />
+        <activity android:name=".hardware.FlashlightTestActivity" android:exported="false" android:screenOrientation="fullUser" />
+        <activity android:name=".hardware.BiometricTestActivity" android:exported="false" android:screenOrientation="fullUser" />
+        <activity android:name=".hardware.MicrophoneTestActivity" android:exported="false" android:screenOrientation="fullUser" />
+        <activity android:name=".hardware.SpeakerTestActivity" android:exported="false" android:screenOrientation="fullUser" />
+        <activity android:name=".hardware.ButtonsTestActivity" android:exported="false" android:screenOrientation="fullUser" />
+        <activity android:name=".hardware.InfraredTestActivity" android:exported="false" android:screenOrientation="fullUser" />
 
         <!-- Trip recording while the screen is off or another app is open -->
         <service
