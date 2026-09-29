@@ -49,4 +49,7 @@ dependencies {
     implementation("io.github.zxing-cpp:android:2.2.0")
     // QR generator: encoder only, drawn with custom designs
     implementation("io.nayuki:qrcodegen:1.8.0")
+
+    // LSPosed module: hooks run inside System UI, the API is provided by the framework at runtime
+    compileOnly("de.robv.android.xposed:api:82")
 }

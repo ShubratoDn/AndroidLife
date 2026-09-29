@@ -92,6 +92,12 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.TruckController">
 
+        <!-- LSPosed module (rooted phones): custom lock screen charging animation inside System UI -->
+        <meta-data android:name="xposedmodule" android:value="true" />
+        <meta-data android:name="xposeddescription" android:value="PhoneDeck charging animation" />
+        <meta-data android:name="xposedminversion" android:value="82" />
+        <meta-data android:name="xposedscope" android:resource="@array/xposed_scope" />
+
         <!-- Landing page: ETS2 controller or keyboard & mouse modes -->
         <activity
             android:name=".HomeActivity"
@@ -184,6 +190,18 @@
         <activity android:name=".hardware.SpeakerTestActivity" android:exported="false" android:screenOrientation="fullUser" />
         <activity android:name=".hardware.ButtonsTestActivity" android:exported="false" android:screenOrientation="fullUser" />
         <activity android:name=".hardware.InfraredTestActivity" android:exported="false" android:screenOrientation="fullUser" />
+
+        <!-- Root tools: lock screen charging animation (LSPosed hook in System UI) -->
+        <activity
+            android:name=".ChargingAnimationActivity"
+            android:exported="false"
+            android:screenOrientation="fullUser" />
+
+        <!-- Charging Animation settings for the System UI hook (system callers only) -->
+        <provider
+            android:name=".charging.ChargingSettingsProvider"
+            android:authorities="com.truckcontroller.pro.charging"
+            android:exported="true" />
 
         <!-- Trip recording while the screen is off or another app is open -->
         <service

@@ -31,6 +31,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.core.content.ContextCompat
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.switchmaterial.SwitchMaterial
+import com.truckcontroller.pro.charging.ChargingAnimation
 import com.truckcontroller.pro.dimmer.NightScreen
 import com.truckcontroller.pro.input.InputMode
 import com.truckcontroller.pro.speed.SpeedTracker
@@ -39,7 +40,7 @@ import java.util.Locale
 
 /**
  * Landing page: a searchable hub of every PhoneDeck tool, grouped into Game Control,
- * Keyboard & Mouse, Phone Tools and Utilities.
+ * Keyboard & Mouse, Phone Tools, Utilities and Root Tools.
  */
 class HomeActivity : ToolActivity() {
 
@@ -49,7 +50,7 @@ class HomeActivity : ToolActivity() {
     }
 
     private enum class Category(val label: String) {
-        GAME("GAME CONTROL"), INPUT("KEYBOARD & MOUSE"), PHONE("PHONE TOOLS"), UTILITY("UTILITIES"),
+        GAME("GAME CONTROL"), INPUT("KEYBOARD & MOUSE"), PHONE("PHONE TOOLS"), UTILITY("UTILITIES"), ROOT("ROOT TOOLS"),
     }
 
     private class Tool(
@@ -166,6 +167,14 @@ class HomeActivity : ToolActivity() {
             Tool("QR & Barcode Maker", "Custom designs", R.drawable.ic_grid, color(R.color.accent),
                 Category.UTILITY, "qr code generator barcode maker create wifi contact design ean",
                 open = go(QrGeneratorActivity::class.java)),
+            Tool("Charging Animation", "Lock screen, needs LSPosed", R.drawable.ic_battery_charging, Color.parseColor("#A78BFA"),
+                Category.ROOT, "root rooted lsposed xposed magisk charging animation lock screen charger plug hyperos miui",
+                live = {
+                    if (ChargingAnimation.isModuleActive() && ChargingAnimation.isEnabled(this)) {
+                        ChargingAnimation.style(this).title to true
+                    } else "Lock screen, needs LSPosed" to false
+                },
+                open = go(ChargingAnimationActivity::class.java)),
         )
         return list
     }

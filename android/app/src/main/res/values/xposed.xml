@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- LSPosed: apps the module hooks (Charging Animation runs inside System UI) -->
+    <string-array name="xposed_scope">
+        <item>com.android.systemui</item>
+        <item>com.truckcontroller.pro</item>
+    </string-array>
+</resources>
