@@ -1,0 +1,6 @@
+{
+  "name": "TruckController Pro - ETS2 Bluetooth Controller",
+  "description": "Professional gaming controller for Euro Truck Simulator 2 featuring 900° steering wheel, haptic feedback, custom gear shifting, realistic pedals, CB radio, and Android Bluetooth HID stack.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

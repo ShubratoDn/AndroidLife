@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <declare-styleable name="ConsoleButton">
+        <attr name="cbLabel" format="string" />
+        <attr name="cbIcon" format="reference" />
+        <attr name="cbAccent" format="color" />
+        <attr name="cbIdleIconColor" format="color" />
+        <attr name="cbShowLed" format="boolean" />
+        <attr name="cbShape" format="enum">
+            <enum name="tile" value="0" />
+            <enum name="round" value="1" />
+            <enum name="circleIcon" value="2" />
+        </attr>
+    </declare-styleable>
+</resources>

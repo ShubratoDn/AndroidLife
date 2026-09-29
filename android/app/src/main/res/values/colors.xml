@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="cockpit_bg">#0B0E14</color>
+    <color name="header_bg">#0B0E14</color>
+    <color name="status_bg">#080B10</color>
+    <color name="panel_bg">#0D121A</color>
+    <color name="tile_bg">#10151E</color>
+    <color name="step_bg">#171E2B</color>
+    <color name="step_bg_pressed">#20293A</color>
+    <color name="divider">#0DFFFFFF</color>
+    <color name="border">#1AFFFFFF</color>
+    <color name="accent">#F97316</color>
+    <color name="accent_dark">#C2410C</color>
+    <color name="text_primary">#F1F5F9</color>
+    <color name="slate_300">#CBD5E1</color>
+    <color name="slate_400">#94A3B8</color>
+    <color name="slate_500">#64748B</color>
+    <color name="slate_600">#475569</color>
+    <color name="slate_700">#334155</color>
+    <color name="amber_300">#FCD34D</color>
+    <color name="amber_400">#FBBF24</color>
+    <color name="amber_500">#F59E0B</color>
+    <color name="emerald_400">#34D399</color>
+    <color name="emerald_500">#10B981</color>
+    <color name="red_400">#F87171</color>
+    <color name="red_500">#EF4444</color>
+    <color name="cyan_300">#67E8F9</color>
+    <color name="cyan_400">#22D3EE</color>
+    <color name="blue_400">#60A5FA</color>
+    <color name="lcd_bg">#161205</color>
+</resources>

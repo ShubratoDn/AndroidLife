@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/cockpit_bg"
+    android:orientation="vertical">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="46dp"
+        android:background="@color/header_bg"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="8dp"
+        android:paddingEnd="8dp">
+
+        <ImageButton
+            android:id="@+id/btnHome"
+            style="@style/Cockpit.HeaderIcon"
+            android:layout_marginStart="0dp"
+            android:contentDescription="Home"
+            android:src="@drawable/ic_home" />
+
+        <ImageView
+            android:id="@+id/ivModeIcon"
+            android:layout_width="18dp"
+            android:layout_height="18dp"
+            android:layout_marginStart="12dp" />
+
+        <TextView
+            android:id="@+id/tvTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:singleLine="true"
+            android:textColor="@android:color/white"
+            android:textSize="15sp"
+            android:textStyle="bold" />
+
+        <LinearLayout
+            android:id="@+id/connectionPill"
+            android:layout_width="wrap_content"
+            android:layout_height="26dp"
+            android:layout_marginStart="10dp"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp">
+
+            <View
+                android:id="@+id/connectionDot"
+                android:layout_width="7dp"
+                android:layout_height="7dp"
+                android:background="@drawable/bg_dot" />
+
+            <TextView
+                android:id="@+id/tvConnection"
+                style="@style/Cockpit.Mono"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:ellipsize="end"
+                android:maxWidth="150dp"
+                android:singleLine="true"
+                android:text="Offline"
+                android:textSize="11sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <Space
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1" />
+
+        <!-- Media keys (keyboard modes only) -->
+        <LinearLayout
+            android:id="@+id/mediaStrip"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:visibility="gone" />
+
+        <ImageButton
+            android:id="@+id/btnRotate"
+            style="@style/Cockpit.HeaderIcon"
+            android:contentDescription="Rotation: auto, portrait or landscape"
+            android:src="@drawable/ic_rotate_screen" />
+
+        <ImageButton
+            android:id="@+id/btnInputSettings"
+            style="@style/Cockpit.HeaderIcon"
+            android:contentDescription="Settings"
+            android:src="@drawable/ic_settings" />
+
+        <ImageButton
+            android:id="@+id/btnBluetooth"
+            style="@style/Cockpit.HeaderIcon"
+            android:contentDescription="Bluetooth connection"
+            android:src="@drawable/ic_bluetooth"
+            app:tint="@color/blue_400" />
+    </LinearLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/divider" />
+
+    <FrameLayout
+        android:id="@+id/inputContent"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:padding="10dp" />
+</LinearLayout>

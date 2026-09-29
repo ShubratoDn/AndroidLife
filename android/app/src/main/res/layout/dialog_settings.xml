@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingStart="24dp"
+        android:paddingTop="8dp"
+        android:paddingEnd="24dp"
+        android:paddingBottom="8dp">
+
+        <!-- Steering -->
+        <TextView
+            style="@style/Cockpit.Mono"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="STEERING WHEEL CALIBRATION"
+            android:textColor="@color/accent"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:text="Rotation range (lock-to-lock)"
+            android:textColor="@color/slate_400"
+            android:textSize="13sp" />
+
+        <RadioGroup
+            android:id="@+id/rgWheelAngle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal" />
+
+        <TextView
+            android:id="@+id/tvSpring"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:textColor="@color/slate_400"
+            android:textSize="13sp" />
+
+        <SeekBar
+            android:id="@+id/sbSpring"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:max="100" />
+
+        <TextView
+            android:id="@+id/tvDeadzone"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:textColor="@color/slate_400"
+            android:textSize="13sp" />
+
+        <SeekBar
+            android:id="@+id/sbDeadzone"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:max="15" />
+
+        <TextView
+            android:id="@+id/tvCurve"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:textColor="@color/slate_400"
+            android:textSize="13sp" />
+
+        <SeekBar
+            android:id="@+id/sbCurve"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:max="15" />
+
+        <!-- Transmission -->
+        <TextView
+            style="@style/Cockpit.Mono"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:text="TRANSMISSION"
+            android:textColor="@color/accent"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+
+        <RadioGroup
+            android:id="@+id/rgShifter"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal" />
+
+        <!-- Haptics -->
+        <TextView
+            style="@style/Cockpit.Mono"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:text="HAPTIC FORCE FEEDBACK"
+            android:textColor="@color/accent"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/swHaptics"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Vibration / force feedback"
+            android:textColor="@color/slate_300" />
+
+        <TextView
+            android:id="@+id/tvHapticIntensity"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/slate_400"
+            android:textSize="13sp" />
+
+        <SeekBar
+            android:id="@+id/sbHapticIntensity"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:max="100" />
+
+        <!-- Audio -->
+        <TextView
+            style="@style/Cockpit.Mono"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:text="REALISTIC TRUCK AUDIO"
+            android:textColor="@color/accent"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/swSound"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Cockpit sound effects"
+            android:textColor="@color/slate_300" />
+
+        <TextView
+            android:id="@+id/tvVolume"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/slate_400"
+            android:textSize="13sp" />
+
+        <SeekBar
+            android:id="@+id/sbVolume"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:max="100" />
+    </LinearLayout>
+</ScrollView>
