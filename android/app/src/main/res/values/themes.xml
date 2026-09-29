@@ -36,6 +36,17 @@
         <item name="tint">@color/slate_300</item>
     </style>
 
+    <!-- Buttons in the Night Screen notification (follows the system notification text colour) -->
+    <style name="NightButton" parent="TextAppearance.Compat.Notification">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">match_parent</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:gravity">center</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:background">?android:attr/selectableItemBackground</item>
+    </style>
+
     <style name="Cockpit.CbPreset" parent="Cockpit.Mono">
         <item name="android:layout_width">0dp</item>
         <item name="android:layout_height">match_parent</item>
