@@ -110,7 +110,7 @@ with a phone full of colourful tool tiles in front.
      *Keyboard Complete* and *Presentation Remote*
    - **Phone tools**: *Device Info*, *Battery Info*, *Charging Meter*, *Storage Analyzer*,
      *Sensor Tester* and *Screen Time*
-   - **Utilities**: *Speedometer*, *Night Screen*, *Scanner* and *QR & Barcode Maker*
+   - **Utilities**: *Speedometer*, *Night Screen*, *File Transfer*, *Scanner* and *QR & Barcode Maker*
 3. Use the **search box** at the top to find a tool by name or by what it does (for example
    "fingerprint", "wifi" or "trip").
 4. The button at the top right switches **fullscreen** on or off for every screen.
@@ -231,8 +231,8 @@ vibration and volume-key slide control.
 
 ## 9. Permissions
 
-PhoneDeck asks for a permission only when you open a tool that needs it, and everything stays on
-the phone.
+PhoneDeck asks for a permission only when you open a tool that needs it. Everything stays on the
+phone, except files you transfer to a PC on your own network with File Transfer.
 
 | Permission | Used by |
 |---|---|
@@ -245,7 +245,8 @@ the phone.
 | Photos, videos and audio | Storage Analyzer |
 | Usage access | Screen Time and app sizes in Storage Analyzer (enabled in a system settings screen) |
 | Display over other apps | Night Screen |
-| Notifications | Night Screen and Speedometer trip controls |
+| Notifications | Night Screen, Speedometer trip controls and File Transfer status |
+| All files access | File Transfer (lets the PC browse and save files; enabled in a system settings screen) |
 
 ---
 

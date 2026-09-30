@@ -26,10 +26,10 @@
 
     <!-- QR / barcode scanner -->
     <uses-permission android:name="android.permission.CAMERA" />
-    <!-- Saving generated QR codes to Pictures on Android 9 (newer versions need no permission) -->
+    <!-- Saving generated QR codes to Pictures on Android 9; File Transfer writes files on Android 9 and 10 -->
     <uses-permission
         android:name="android.permission.WRITE_EXTERNAL_STORAGE"
-        android:maxSdkVersion="28" />
+        android:maxSdkVersion="29" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
 
     <!-- Screen Time: read Android's usage history (granted by the user in Usage access settings) -->
@@ -56,6 +56,14 @@
     <uses-permission
         android:name="android.permission.READ_EXTERNAL_STORAGE"
         android:maxSdkVersion="32" />
+
+    <!-- File Transfer: the PC browses and saves files anywhere in storage (Android 11+ "All files access"),
+         served from a foreground service that keeps Wi-Fi awake -->
+    <uses-permission
+        android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
+        tools:ignore="ScopedStorage" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
 
     <!-- Sensor Tester: step counter / detector -->
     <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
@@ -90,6 +98,7 @@
         android:label="PhoneDeck"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
+        android:requestLegacyExternalStorage="true"
         android:theme="@style/Theme.TruckController">
 
         <!-- LSPosed module (rooted phones): custom lock screen charging animation inside System UI -->
@@ -191,6 +200,12 @@
         <activity android:name=".hardware.ButtonsTestActivity" android:exported="false" android:screenOrientation="fullUser" />
         <activity android:name=".hardware.InfraredTestActivity" android:exported="false" android:screenOrientation="fullUser" />
 
+        <activity
+            android:name=".FileTransferActivity"
+            android:exported="false"
+            android:launchMode="singleTop"
+            android:screenOrientation="fullUser" />
+
         <!-- Root tools: lock screen charging animation (LSPosed hook in System UI) -->
         <activity
             android:name=".ChargingAnimationActivity"
@@ -208,6 +223,12 @@
             android:name=".speed.TripService"
             android:exported="false"
             android:foregroundServiceType="location" />
+
+        <!-- File Transfer web server for browsers on the local network -->
+        <service
+            android:name=".transfer.FileTransferService"
+            android:exported="false"
+            android:foregroundServiceType="connectedDevice" />
 
         <!-- Night Screen dimmer overlay -->
         <service

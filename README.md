@@ -3,11 +3,13 @@
 **One app, a whole deck of tools.** PhoneDeck turns an Android phone into a **Bluetooth steering
 wheel for Euro Truck Simulator 2**, a **wireless keyboard, touchpad and presentation remote** for
 your PC, and a **toolbox for the phone itself**: hardware and sensor tests, battery and storage
-analysis, screen time, a speedometer, a QR / barcode scanner and generator, and a screen dimmer.
+analysis, screen time, a speedometer, a QR / barcode scanner and generator, a screen dimmer, and
+**Wi-Fi file transfer** between the phone and any PC browser.
 
 The PC-control features use the Bluetooth HID Device profile built into Android 9+, so the PC sees a
 normal Bluetooth game controller / keyboard / mouse. **No PC software, drivers or server are needed.**
-All phone tools work offline and nothing leaves the phone.
+All phone tools work offline. Nothing leaves the phone except the files you choose to transfer to
+a PC on your own network with File Transfer.
 
 📖 **New here? Follow the step-by-step [Installation Guide](INSTALL.md).**
 
@@ -72,6 +74,7 @@ every mode with an adjustable keyboard height.
 | **Night Screen** | Dims the screen below the lowest brightness; adjustable from the notification and Quick Settings |
 | **Scanner** | Reads QR codes and barcodes, with actions for links, Wi-Fi, contacts, and typing the code on the PC |
 | **QR & Barcode Maker** | QR codes in many designs, plus Code 128, EAN-13, EAN-8, UPC-A and Code 39 barcodes |
+| **File Transfer** | Browse, download and upload the phone's files from any web browser on a PC over the same Wi-Fi or hotspot; nothing to install on the PC |
 
 A fullscreen toggle is available on every screen and is remembered.
 
@@ -82,7 +85,7 @@ A fullscreen toggle is available on every screen and is remembered.
 | | |
 |---|---|
 | Phone | Android 9 (API 28) or newer. PC control needs Bluetooth; some manufacturer systems disable the Bluetooth HID Device profile, in which case the PC tools stay "Offline" (all phone tools still work) |
-| PC | Any computer with Bluetooth (tested with Windows 11), only for the game and keyboard & mouse tools |
+| PC | Any computer with Bluetooth (tested with Windows 11), only for the game and keyboard & mouse tools. File Transfer needs only a web browser on the same network |
 | Build | JDK 17+, Android SDK with platform 35 and build tools 35 |
 
 ---
@@ -204,9 +207,11 @@ android/                              Android app (Kotlin)
     ToolActivity.kt                   Shared layout for the phone tools
     DeviceInfoActivity.kt, BatteryInfoActivity.kt, BatteryActivity.kt,
     StorageActivity.kt, ScreenTimeActivity.kt, SensorTesterActivity.kt,
-    SpeedometerActivity.kt, ScannerActivity.kt, QrGeneratorActivity.kt
+    SpeedometerActivity.kt, ScannerActivity.kt, QrGeneratorActivity.kt, FileTransferActivity.kt
     hardware/                         Hardware tests (GPS, Wi-Fi, Bluetooth, NFC, camera, audio …)
     sensors/, battery/, screentime/, speed/, scan/, qr/, dimmer/
+    transfer/                         File Transfer web server and background service
+  app/src/main/assets/transfer/       Browser page served to the PC by File Transfer
     bluetooth/BluetoothHidService.kt  HID descriptor and report sending
     input/                            Keyboard layouts, keyboard view, touchpad view
     ui/                               Steering wheel, pedals, look pad, tiles, dialogs
@@ -237,3 +242,4 @@ npm run dev        # http://localhost:3000
 | Pedals inverted or stuck at 100 % | Enable **Invert** for that axis in ETS2 |
 | A phone tool says a permission is needed | Tap **Allow**, or enable it in the app's settings; each tool only asks for what it uses |
 | A hardware test says "Not on this phone" | The phone doesn't report that component (for example no infrared blaster) |
+| File Transfer page doesn't open on the PC | Both devices must be on the same network; guest Wi-Fi often blocks devices from reaching each other, so use the phone's hotspot instead |
