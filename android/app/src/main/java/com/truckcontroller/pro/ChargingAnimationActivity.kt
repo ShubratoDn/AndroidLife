@@ -184,6 +184,15 @@ class ChargingAnimationActivity : ToolActivity() {
             ChargingAnimation.setShowDetails(this@ChargingAnimationActivity, it)
             renderStyle()
         }, LinearLayout.LayoutParams(MATCH, WRAP).apply { topMargin = dp(8) })
+        addView(switch("Stay on screen while charging", ChargingAnimation.stayOn(context)) {
+            ChargingAnimation.setStayOn(this@ChargingAnimationActivity, it)
+        }, LinearLayout.LayoutParams(MATCH, WRAP).apply { topMargin = dp(8) })
+        addView(TextView(context).apply {
+            text = "Off: the animation shows for ${ChargingAnimation.SHOW_SECONDS} seconds. On: it stays until you tap, " +
+                "unlock, press a button or unplug. The screen still turns off at your screen timeout."
+            textSize = 12f
+            setTextColor(color(R.color.slate_400))
+        })
     }
 
     // ------------------------------------------------------------------

@@ -30,6 +30,10 @@ object ChargingAnimation {
     const val KEY_ENABLED = "enabled"
     const val KEY_STYLE = "style"
     const val KEY_DETAILS = "details"
+    const val KEY_STAY_ON = "stay_on"
+
+    /** How long the animation shows when "Stay on screen while charging" is off. */
+    const val SHOW_SECONDS = 30
 
     private const val PREFS = "charging_animation"
 
@@ -48,10 +52,15 @@ object ChargingAnimation {
     fun showDetails(context: Context) = prefs(context).getBoolean(KEY_DETAILS, true)
     fun setShowDetails(context: Context, show: Boolean) = prefs(context).edit().putBoolean(KEY_DETAILS, show).apply()
 
+    /** Keep the animation up until tap, unlock, a button, screen off or unplug, instead of [SHOW_SECONDS]. */
+    fun stayOn(context: Context) = prefs(context).getBoolean(KEY_STAY_ON, false)
+    fun setStayOn(context: Context, stay: Boolean) = prefs(context).edit().putBoolean(KEY_STAY_ON, stay).apply()
+
     fun toBundle(context: Context) = Bundle().apply {
         putBoolean(KEY_ENABLED, isEnabled(context))
         putString(KEY_STYLE, style(context).name)
         putBoolean(KEY_DETAILS, showDetails(context))
+        putBoolean(KEY_STAY_ON, stayOn(context))
     }
 
     private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)

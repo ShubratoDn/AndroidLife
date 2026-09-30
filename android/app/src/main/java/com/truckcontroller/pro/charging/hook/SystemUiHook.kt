@@ -1,6 +1,9 @@
 package com.truckcontroller.pro.charging.hook
 
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.os.BatteryManager
 import android.os.Bundle
 import android.view.View
 import android.view.ViewGroup
@@ -15,6 +18,7 @@ import de.robv.android.xposed.XposedBridge
 import de.robv.android.xposed.XposedHelpers
 import de.robv.android.xposed.callbacks.XC_LoadPackage
 import java.lang.ref.WeakReference
+import java.lang.reflect.Member
 
 /**
  * LSPosed entry point (listed in assets/xposed_init).
@@ -35,10 +39,15 @@ class SystemUiHook : IXposedHookLoadPackage {
         private const val CHARGE_SCREEN = "com.android.keyguard.charge.container.MiuiChargeAnimationView"
         private const val VIEW_TAG = "phonedeck_charge_animation"
         private const val FADE_MS = 300L
+        /** HyperOS closes the charging screen by itself with these after about 2 seconds. */
+        private val AUTO_DISMISS = setOf("dealWithAnimationShow", "dismiss_for_timeout")
     }
 
     /** PhoneDeck's view on the charging screen. */
     private var current: WeakReference<View>? = null
+    /** The charging screen's own `startDismiss(String)`, used to close it when PhoneDeck's timer ends. */
+    private var startDismiss: Member? = null
+    private var timeout: Runnable? = null
 
     override fun handleLoadPackage(lpparam: XC_LoadPackage.LoadPackageParam) {
         when (lpparam.packageName) {
@@ -64,6 +73,20 @@ class SystemUiHook : IXposedHookLoadPackage {
                         if (param.args[0] == true) current?.get()?.animate()?.alpha(0f)?.setDuration(FADE_MS)
                     }
                 })
+            // While PhoneDeck's animation shows and the charger is in, HyperOS's own quick close is
+            // ignored; PhoneDeck's timer (or tap, unlock, a button, screen off, unplug) closes it
+            startDismiss = XposedHelpers.findAndHookMethod(CHARGE_SCREEN, classLoader, "startDismiss",
+                String::class.java, object : XC_MethodHook() {
+                    override fun beforeHookedMethod(param: MethodHookParam) {
+                        val screen = param.thisObject as View
+                        if (current?.get() == null) return
+                        if (param.args[0] in AUTO_DISMISS && isPlugged(screen.context)) {
+                            param.result = null
+                            return
+                        }
+                        cancelTimeout(screen)
+                    }
+                }).hookedMethod
             XposedBridge.log("PhoneDeck: charging animation hook installed")
         }.onFailure { XposedBridge.log("PhoneDeck: charging animation hook not installed: $it") }
     }
@@ -78,12 +101,33 @@ class SystemUiHook : IXposedHookLoadPackage {
             ?: ChargeStyle.NEON_RING
 
         val host = chargeScreen(chargeView)
-        XposedBridge.log("PhoneDeck: showing ${style.name} on ${(host ?: chargeView).javaClass.name}")
         val view = ChargeAnimationView(chargeView.context, style, settings.getBoolean(ChargingAnimation.KEY_DETAILS, true))
             .apply { tag = VIEW_TAG }
         (host ?: chargeView).addView(view,
             FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
         current = WeakReference(view)
+
+        if (host != null) {
+            cancelTimeout(host)
+            if (!settings.getBoolean(ChargingAnimation.KEY_STAY_ON, false)) {
+                val close = Runnable {
+                    timeout = null
+                    startDismiss?.let { runCatching { XposedBridge.invokeOriginalMethod(it, host, arrayOf("dismiss_for_timeout")) } }
+                }
+                timeout = close
+                host.postDelayed(close, ChargingAnimation.SHOW_SECONDS * 1000L)
+            }
+        }
+    }
+
+    private fun cancelTimeout(screen: View) {
+        timeout?.let { screen.removeCallbacks(it) }
+        timeout = null
+    }
+
+    private fun isPlugged(context: Context): Boolean {
+        val battery = context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED)) ?: return false
+        return battery.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) != 0
     }
 
     private fun chargeScreen(chargeView: View): ViewGroup? {
