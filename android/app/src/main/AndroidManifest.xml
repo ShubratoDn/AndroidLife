@@ -206,6 +206,25 @@
             android:launchMode="singleTop"
             android:screenOrientation="fullUser" />
 
+        <!-- "Send to PC" in the share sheet: sends files or text to browsers connected to File Transfer -->
+        <activity
+            android:name=".ShareToPcActivity"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher"
+            android:label="Send to PC"
+            android:screenOrientation="fullUser">
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="*/*" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND_MULTIPLE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="*/*" />
+            </intent-filter>
+        </activity>
+
         <!-- Root tools: lock screen charging animation (LSPosed hook in System UI) -->
         <activity
             android:name=".ChargingAnimationActivity"

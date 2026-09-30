@@ -12,10 +12,10 @@ import android.os.Environment
 import android.os.SystemClock
 import android.os.storage.StorageManager
 import android.provider.MediaStore
-import android.provider.Settings
 import android.util.LruCache
 import android.util.Size
-import android.webkit.MimeTypeMap
+import com.truckcontroller.pro.transfer.FileTransfer.Access
+import com.truckcontroller.pro.transfer.FileTransfer.Direction
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.BufferedInputStream
@@ -34,7 +34,6 @@ import java.net.ServerSocket
 import java.net.Socket
 import java.net.URLDecoder
 import java.net.URLEncoder
-import java.security.SecureRandom
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.RejectedExecutionException
@@ -48,15 +47,24 @@ import java.util.zip.ZipOutputStream
 import kotlin.concurrent.thread
 
 /**
- * Minimal HTTP/1.1 server for [FileTransfer]: serves the browser page from assets and a small
- * JSON API over the phone's storage. Files are streamed in both directions (no temp copies in
- * memory), downloads support Range so videos can be seeked, folders download as zip.
- * Only devices on the local network are answered, and every API call needs the session cookie
- * handed out for the right PIN.
+ * Minimal HTTP/1.1 server for [FileTransfer]: serves the browser page from assets and a JSON API.
+ *
+ * Security model:
+ * - only devices on the local network are answered, and only when they address the phone by IP
+ *   (blocks DNS-rebinding pages),
+ * - a browser has no access until the phone approves it (or it enters the PIN); it then holds an
+ *   HttpOnly, SameSite=Strict session cookie tied to a [Hub.Device],
+ * - every file operation is limited to the folders that device's [Access] level allows.
+ *
+ * Files are streamed in both directions (never held in memory), downloads support Range so
+ * videos can be seeked, and folders download as zip.
  */
-class TransferServer(private val context: Context) {
+class TransferServer(private val context: Context, private val hub: Hub) {
 
     private class Volume(val name: String, val root: File)
+
+    /** A top folder a device may open. */
+    private class Root(val name: String, val dir: File, val writable: Boolean, val icon: String)
 
     private class HttpError(val status: Int, message: String) : Exception(message)
 
@@ -80,6 +88,12 @@ class TransferServer(private val context: Context) {
             if (remaining > limit) throw HttpError(413, "Request too large")
             return readBytes().toString(Charsets.UTF_8)
         }
+
+        fun json(limit: Int): JSONObject = try {
+            JSONObject(text(limit))
+        } catch (e: org.json.JSONException) {
+            throw HttpError(400, "Bad request")
+        }
     }
 
     private class Request(
@@ -97,18 +111,19 @@ class TransferServer(private val context: Context) {
             ?.firstOrNull { it.startsWith("$COOKIE=") }?.substringAfter('=')
     }
 
-    private class Attempts(var count: Int = 0, var lockedUntil: Long = 0)
-
     companion object {
         private const val COOKIE = "pd"
+        private const val REMEMBER_SECONDS = 30L * 24 * 60 * 60
         private const val BUFFER = 256 * 1024
-        private const val MAX_LOGIN_ATTEMPTS = 5
-        private const val LOCKOUT_MS = 60_000L
         private const val THUMB = 320
         private const val MAX_PREVIEW = 2048
-        private val ILLEGAL_NAME_CHARS = Regex("[:*?\"<>|\\x00-\\x1F]")
+        private val IPV4 = Regex("^\\d{1,3}(\\.\\d{1,3}){3}$")
 
-        /** Standard folders offered as shortcuts in the browser, relative to internal storage. */
+        private const val PAGE_POLICY = "default-src 'self'; script-src 'self' 'unsafe-inline'; " +
+            "style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; " +
+            "connect-src 'self'; frame-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
+
+        /** Standard folders offered as shortcuts to devices with full access. */
         private val PLACES = listOf(
             Triple("Camera", "DCIM/Camera", "camera"),
             Triple("Screenshots", "Pictures/Screenshots", "image"),
@@ -127,11 +142,7 @@ class TransferServer(private val context: Context) {
     @Volatile private var running = false
     private var serverSocket: ServerSocket? = null
     private val sockets = ConcurrentHashMap.newKeySet<Socket>()
-    private val pool = ThreadPoolExecutor(0, 32, 60, TimeUnit.SECONDS, SynchronousQueue())
-    private val tokens = ConcurrentHashMap.newKeySet<String>()
-    private val attempts = ConcurrentHashMap<String, Attempts>()
-    private val reserved = ConcurrentHashMap.newKeySet<String>()
-    private val random = SecureRandom()
+    private val pool = ThreadPoolExecutor(0, 64, 60, TimeUnit.SECONDS, SynchronousQueue())
     private val page: ByteArray by lazy { context.assets.open("transfer/index.html").use { it.readBytes() } }
 
     private val thumbs = object : LruCache<String, ByteArray>(8 * 1024 * 1024) {
@@ -174,7 +185,6 @@ class TransferServer(private val context: Context) {
         sockets.forEach { runCatching { it.close() } }
         sockets.clear()
         pool.shutdownNow()
-        tokens.clear()
     }
 
     private fun acceptLoop(server: ServerSocket) {
@@ -225,7 +235,7 @@ class TransferServer(private val context: Context) {
                     output.flush()
                     break
                 }
-                FileTransfer.seen(client)
+                FileTransfer.seen()
                 val keepAlive = handle(request, output)
                 output.flush()
                 if (!keepAlive || !request.keepAlive || request.body.remaining != 0L) break
@@ -307,6 +317,7 @@ class TransferServer(private val context: Context) {
         val head = StringBuilder("HTTP/1.1 ").append(status).append(' ').append(reason(status)).append("\r\n")
         headers.forEach { (k, v) -> head.append(k).append(": ").append(v).append("\r\n") }
         head.append("X-Content-Type-Options: nosniff\r\n")
+        head.append("X-Frame-Options: DENY\r\n")
         head.append("Referrer-Policy: no-referrer\r\n")
         head.append("Connection: ").append(if (keepAlive) "keep-alive" else "close").append("\r\n\r\n")
         out.write(head.toString().toByteArray(Charsets.UTF_8))
@@ -330,6 +341,9 @@ class TransferServer(private val context: Context) {
     private fun ok(out: OutputStream, req: Request, json: JSONObject = JSONObject().put("ok", true)) =
         sendJson(out, req, 200, json)
 
+    private fun sessionCookie(token: String, remember: Boolean) =
+        "Set-Cookie" to "$COOKIE=$token; Path=/; HttpOnly; SameSite=Strict" + if (remember) "; Max-Age=$REMEMBER_SECONDS" else ""
+
     // ------------------------------------------------------------------
     // Routing
     // ------------------------------------------------------------------
@@ -338,6 +352,12 @@ class TransferServer(private val context: Context) {
         route(req, out)
     } catch (e: HttpError) {
         sendJson(out, req, e.status, JSONObject().put("error", e.message))
+    } catch (e: Hub.LimitException) {
+        sendJson(out, req, 429, JSONObject().put("error", e.message))
+    } catch (e: IllegalArgumentException) {
+        sendJson(out, req, 400, JSONObject().put("error", e.message ?: "Bad request"))
+    } catch (e: IllegalStateException) {
+        sendJson(out, req, 409, JSONObject().put("error", e.message ?: "Not possible right now"))
     } catch (e: SecurityException) {
         sendJson(out, req, 403, JSONObject().put("error", "Android denied access to this file"))
     } catch (e: IOException) {
@@ -347,65 +367,226 @@ class TransferServer(private val context: Context) {
         sendJson(out, req, 500, JSONObject().put("error", e.message ?: "Server error"), keepAlive = false)
     }
 
+    /** The page must be opened by IP: a hostname means another site is trying to reach the phone. */
+    private fun checkHost(req: Request) {
+        val host = req.headers["host"] ?: throw HttpError(400, "Bad request")
+        val name = if (host.startsWith("[")) host.substringBefore(']').removePrefix("[") else host.substringBefore(':')
+        if (!(name == "localhost" || IPV4.matches(name) || host.startsWith("["))) {
+            throw HttpError(403, "Open this page with the phone's IP address")
+        }
+    }
+
     private fun route(req: Request, out: OutputStream): Boolean {
+        checkHost(req)
         val get = req.method == "GET" || req.method == "HEAD"
         val post = req.method == "POST"
         if (req.path == "/" || req.path == "/index.html") {
             if (!get) throw HttpError(405, "Method not allowed")
-            return sendBytes(out, req, 200, "text/html; charset=utf-8", page, listOf("Cache-Control" to "no-cache"))
+            return sendBytes(out, req, 200, "text/html; charset=utf-8", page,
+                listOf("Cache-Control" to "no-cache", "Content-Security-Policy" to PAGE_POLICY))
         }
         if (!req.path.startsWith("/api/")) throw HttpError(404, "Not found")
-        if (req.path == "/api/login" && post) return login(req, out)
-        if (!authorized(req)) throw HttpError(401, "Enter the PIN shown on the phone")
+
+        // Before sign-in
+        when {
+            req.path == "/api/hello" && get -> return hello(req, out)
+            req.path == "/api/auth/request" && post -> return authRequest(req, out)
+            req.path == "/api/auth/wait" && get -> return authWait(req, out)
+            req.path == "/api/auth/pin" && post -> return authPin(req, out)
+        }
+
+        val device = hub.deviceForToken(req.token) ?: throw HttpError(401, "Not connected")
+        hub.touch(device, req.client)
         return when {
-            req.path == "/api/info" && get -> info(req, out)
-            req.path == "/api/list" && get -> list(req, out)
-            req.path == "/api/file" && get -> file(req, out)
-            req.path == "/api/thumb" && get -> thumb(req, out)
-            req.path == "/api/zip" && (get || post) -> zip(req, out)
-            req.path == "/api/upload" && req.method == "PUT" -> upload(req, out)
-            req.path == "/api/mkdir" && post -> mkdir(req, out)
-            req.path == "/api/rename" && post -> rename(req, out)
-            req.path == "/api/delete" && post -> delete(req, out)
+            req.path == "/api/me" && get -> me(req, out, device)
+            req.path == "/api/me/name" && post -> renameMe(req, out, device)
+            req.path == "/api/logout" && post -> logout(req, out, device)
+            req.path == "/api/events" && get -> events(out, device)
+            req.path == "/api/shares" && post -> createShare(req, out, device)
+            req.path == "/api/shares/accept" && post -> shareAction(req, out, device, "accept")
+            req.path == "/api/shares/decline" && post -> shareAction(req, out, device, "decline")
+            req.path == "/api/shares/cancel" && post -> shareAction(req, out, device, "cancel")
+            req.path == "/api/shares/upload" && req.method == "PUT" -> shareUpload(req, out, device)
+            req.path == "/api/shares/download" && get -> shareDownload(req, out, device)
+            req.path == "/api/text" && post -> text(req, out, device)
+            req.path == "/api/list" && get -> list(req, out, device)
+            req.path == "/api/file" && get -> file(req, out, device)
+            req.path == "/api/thumb" && get -> thumb(req, out, device)
+            req.path == "/api/zip" && (get || post) -> zip(req, out, device)
+            req.path == "/api/upload" && req.method == "PUT" -> upload(req, out, device)
+            req.path == "/api/mkdir" && post -> mkdir(req, out, device)
+            req.path == "/api/rename" && post -> rename(req, out, device)
+            req.path == "/api/delete" && post -> delete(req, out, device)
             else -> throw HttpError(404, "Not found")
         }
     }
 
     // ------------------------------------------------------------------
-    // PIN and session
+    // Sign-in: approval on the phone, or the PIN
     // ------------------------------------------------------------------
 
-    private fun authorized(req: Request) =
-        !FileTransfer.requirePin(context) || req.token?.let { it in tokens } == true
+    private fun hello(req: Request, out: OutputStream): Boolean =
+        ok(out, req, JSONObject().put("phone", hub.phoneName).put("pin", FileTransfer.allowPin(context)))
 
-    private fun login(req: Request, out: OutputStream): Boolean {
-        val pin = runCatching { JSONObject(req.body.text(1024)).optString("pin") }.getOrDefault("").trim()
-        if (FileTransfer.requirePin(context)) {
-            val now = SystemClock.elapsedRealtime()
-            val tries = attempts.getOrPut(req.client) { Attempts() }
-            synchronized(tries) {
-                if (now < tries.lockedUntil) {
-                    throw HttpError(429, "Too many wrong PINs. Try again in ${(tries.lockedUntil - now) / 1000 + 1} s")
+    private fun authRequest(req: Request, out: OutputStream): Boolean {
+        val body = req.body.json(4096)
+        val request = hub.requestAccess(body.optString("name"), body.optString("platform"), req.client)
+        return ok(out, req, JSONObject().put("id", request.id).put("code", request.code))
+    }
+
+    /** Long poll: answers when the phone decides, or after 25 s with "pending". */
+    private fun authWait(req: Request, out: OutputStream): Boolean {
+        val request = hub.awaitRequest(req.param("id"), req.client, 25_000)
+            ?: return sendJson(out, req, 404, JSONObject().put("status", "unknown"))
+        val status = request.status.name.lowercase(Locale.US)
+        if (request.status != Hub.RequestStatus.APPROVED) return ok(out, req, JSONObject().put("status", status))
+        val token = hub.collectToken(request)
+        val cookie = if (token != null) listOf(sessionCookie(token, request.remembered)) else emptyList()
+        return sendJson(out, req, 200, JSONObject().put("status", status), cookie)
+    }
+
+    private fun authPin(req: Request, out: OutputStream): Boolean {
+        val body = req.body.json(4096)
+        val (_, token) = hub.loginWithPin(body.optString("pin").trim(), body.optString("name"), body.optString("platform"), req.client)
+            ?: throw HttpError(403, "Wrong PIN")
+        return sendJson(out, req, 200, JSONObject().put("ok", true), listOf(sessionCookie(token, false)))
+    }
+
+    private fun logout(req: Request, out: OutputStream, device: Hub.Device): Boolean {
+        hub.remove(device.id, byPhone = false)
+        return sendJson(out, req, 200, JSONObject().put("ok", true),
+            listOf("Set-Cookie" to "$COOKIE=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0"))
+    }
+
+    private fun me(req: Request, out: OutputStream, device: Hub.Device): Boolean {
+        val roots = JSONArray()
+        roots(device).forEach {
+            roots.put(JSONObject().put("name", it.name).put("path", it.dir.path).put("writable", it.writable)
+                .put("icon", it.icon).put("free", it.dir.usableSpace).put("total", it.dir.totalSpace))
+        }
+        val places = JSONArray()
+        if (device.access == Access.FULL) {
+            val added = HashSet<String>()
+            val internal = volumes().first().root
+            PLACES.forEach { (name, rel, icon) ->
+                val dir = File(internal, rel)
+                // First existing folder wins (Screenshots live in Pictures or DCIM depending on the phone)
+                if (name !in added && dir.isDirectory) {
+                    added += name
+                    places.put(JSONObject().put("name", name).put("path", dir.path).put("icon", icon))
                 }
-                if (pin != FileTransfer.pin) {
-                    tries.count++
-                    if (tries.count >= MAX_LOGIN_ATTEMPTS) {
-                        tries.count = 0
-                        tries.lockedUntil = now + LOCKOUT_MS
-                    }
-                    throw HttpError(403, "Wrong PIN")
-                }
-                tries.count = 0
             }
         }
-        val token = ByteArray(24).also { random.nextBytes(it) }.joinToString("") { "%02x".format(it) }
-        tokens += token
-        return sendJson(out, req, 200, JSONObject().put("ok", true),
-            listOf("Set-Cookie" to "$COOKIE=$token; Path=/; HttpOnly; SameSite=Strict"))
+        return ok(out, req, JSONObject()
+            .put("me", hub.meJson(device))
+            .put("phone", hub.phoneName)
+            .put("roots", roots)
+            .put("places", places))
+    }
+
+    private fun renameMe(req: Request, out: OutputStream, device: Hub.Device): Boolean {
+        hub.rename(device, req.body.json(4096).optString("name"))
+        return ok(out, req)
     }
 
     // ------------------------------------------------------------------
-    // Storage volumes and paths
+    // Live events (Server-Sent Events)
+    // ------------------------------------------------------------------
+
+    private fun events(out: OutputStream, device: Hub.Device): Boolean {
+        writeHead(out, 200, listOf(
+            "Content-Type" to "text/event-stream; charset=utf-8",
+            "Cache-Control" to "no-store",
+        ), keepAlive = false)
+        out.write("retry: 3000\n\n".toByteArray())
+        out.flush()
+        val queue = hub.openStream(device)
+        try {
+            while (running && hub.isCurrent(device)) {
+                val message = queue.poll(15, TimeUnit.SECONDS)
+                if (message == null) {
+                    out.write(": ping\n\n".toByteArray())
+                } else {
+                    out.write("data: $message\n\n".toByteArray(Charsets.UTF_8))
+                    if (message == Hub.KICKED) break
+                }
+                out.flush()
+            }
+            if (!hub.isCurrent(device)) {
+                out.write("data: ${Hub.KICKED}\n\n".toByteArray())
+                out.flush()
+            }
+        } finally {
+            hub.closeStream(device, queue)
+        }
+        return false
+    }
+
+    // ------------------------------------------------------------------
+    // Sending between devices
+    // ------------------------------------------------------------------
+
+    private fun createShare(req: Request, out: OutputStream, device: Hub.Device): Boolean {
+        val body = req.body.json(4 * 1024 * 1024)
+        val to = body.optJSONArray("to") ?: throw HttpError(400, "Choose who to send to")
+        val files = body.optJSONArray("files") ?: throw HttpError(400, "No files")
+        val share = hub.createShare(
+            device,
+            (0 until files.length()).map { files.getJSONObject(it).let { f -> f.optString("name") to f.optLong("size", -1) } },
+            (0 until to.length()).map { to.getString(it) },
+        )
+        return ok(out, req, JSONObject().put("ok", true).put("id", share.id))
+    }
+
+    private fun shareAction(req: Request, out: OutputStream, device: Hub.Device, action: String): Boolean {
+        val share = hub.share(req.param("id")) ?: throw HttpError(404, "This send no longer exists")
+        val isSender = share.fromId == device.id
+        val isRecipient = share.recipients.containsKey(device.id)
+        if (!isSender && !isRecipient) throw HttpError(403, "This send isn't yours")
+        when (action) {
+            "accept" -> if (!isRecipient || !hub.accept(share, device.id)) throw HttpError(409, "Can't accept this send any more")
+            "decline" -> if (isRecipient) hub.decline(share, device.id)
+            "cancel" -> if (isSender) hub.cancelShare(share) else hub.decline(share, device.id)
+        }
+        return ok(out, req)
+    }
+
+    private fun shareUpload(req: Request, out: OutputStream, device: Hub.Device): Boolean {
+        val share = hub.share(req.param("id")) ?: throw HttpError(404, "This send no longer exists")
+        if (share.fromId != device.id) throw HttpError(403, "Only the sender can upload")
+        val index = req.param("index")?.toIntOrNull() ?: throw HttpError(400, "Missing file")
+        val length = req.headers["content-length"]?.toLongOrNull() ?: throw HttpError(411, "Missing file size")
+        hub.receiveUpload(share, index, req.body, length)
+        return ok(out, req)
+    }
+
+    private fun shareDownload(req: Request, out: OutputStream, device: Hub.Device): Boolean {
+        val share = hub.share(req.param("id")) ?: throw HttpError(404, "This send no longer exists")
+        if (!share.recipients.containsKey(device.id)) throw HttpError(403, "This send isn't for you")
+        var keepAlive = true
+        hub.download(share, device) { name, size, zip ->
+            keepAlive = !zip && size != null
+            val headers = mutableListOf(
+                "Content-Type" to if (zip) "application/zip" else Names.mime(name),
+                "Content-Disposition" to disposition("attachment", name),
+                "Cache-Control" to "no-store",
+            )
+            if (size != null) headers += "Content-Length" to size.toString()
+            writeHead(out, 200, headers, keepAlive)
+            out
+        }
+        return keepAlive
+    }
+
+    private fun text(req: Request, out: OutputStream, device: Hub.Device): Boolean {
+        val body = req.body.json(64 * 1024)
+        val to = body.optJSONArray("to") ?: throw HttpError(400, "Choose who to send to")
+        hub.sendText(device.id, device.name, (0 until to.length()).map { to.getString(it) }, body.optString("text"))
+        return ok(out, req)
+    }
+
+    // ------------------------------------------------------------------
+    // Storage volumes and access scope
     // ------------------------------------------------------------------
 
     @Synchronized
@@ -428,62 +609,34 @@ class TransferServer(private val context: Context) {
         return list
     }
 
-    private fun volumeOf(file: File) =
-        volumes().firstOrNull { file == it.root || file.path.startsWith(it.root.path + "/") }
+    private fun inStorage(file: File) =
+        volumes().any { file == it.root || file.path.startsWith(it.root.path + "/") }
 
-    /** Resolves a path from the browser; anything outside the storage volumes is refused. */
-    private fun resolve(path: String?): File {
+    /** The top folders this device may open: none, the shared folders, or every storage volume. */
+    private fun roots(device: Hub.Device): List<Root> = when (device.access) {
+        Access.SEND -> emptyList()
+        Access.FOLDERS -> FileTransfer.sharedFolders(context).mapNotNull { folder ->
+            val dir = runCatching { File(folder.path).canonicalFile }.getOrNull()
+                ?.takeIf { it.isDirectory && inStorage(it) } ?: return@mapNotNull null
+            Root(dir.name, dir, folder.writable, "folder")
+        }
+        Access.FULL -> volumes().mapIndexed { i, v -> Root(v.name, v.root, true, if (i == 0) "phone" else "sd") }
+    }
+
+    /** Resolves a path from the browser inside the device's allowed folders, or refuses it. */
+    private fun resolve(device: Hub.Device, path: String?): Pair<File, Root> {
+        if (device.access == Access.SEND) throw HttpError(403, "The phone hasn't shared its files with this device")
         if (path.isNullOrEmpty()) throw HttpError(400, "Missing path")
         val file = File(path).canonicalFile
-        volumeOf(file) ?: throw HttpError(403, "Outside the phone storage")
-        return file
+        val root = roots(device).filter { file == it.dir || file.path.startsWith(it.dir.path + "/") }
+            .maxByOrNull { it.dir.path.length }
+            ?: throw HttpError(403, "This device doesn't have access to that folder")
+        return file to root
     }
 
-    /** One file or folder name typed by the user. */
-    private fun cleanName(name: String?): String {
-        val clean = name.orEmpty().trim().replace(ILLEGAL_NAME_CHARS, "_")
-        if (clean.isEmpty() || clean == "." || clean == ".." || clean.contains('/') || clean.contains('\\')) {
-            throw HttpError(400, "Invalid name")
-        }
-        if (clean.toByteArray().size > 255) throw HttpError(400, "Name too long")
-        return clean
+    private fun requireWritable(root: Root) {
+        if (!root.writable) throw HttpError(403, "\"${root.name}\" is view-only for this device")
     }
-
-    /** "folder/sub/file.jpg" from a folder upload; every part must be a plain name. */
-    private fun cleanRelative(name: String?): String =
-        name.orEmpty().replace('\\', '/').split('/').filter { it.isNotEmpty() }
-            .also { if (it.isEmpty()) throw HttpError(400, "Invalid name") }
-            .joinToString("/") { cleanName(it) }
-
-    private fun checkWritable() {
-        if (FileTransfer.readOnly(context)) {
-            throw HttpError(403, "Read-only mode is on. Turn it off on the phone to make changes.")
-        }
-    }
-
-    /** "photo.jpg" → "photo (1).jpg" when the name is taken (or being uploaded right now). */
-    @Synchronized
-    private fun reserveUnique(file: File): File {
-        val base = file.nameWithoutExtension
-        val ext = file.extension.let { if (it.isEmpty()) "" else ".$it" }
-        var candidate = file
-        var n = 1
-        while (candidate.exists() || candidate.path in reserved) {
-            candidate = File(file.parentFile, "$base ($n)$ext")
-            n++
-        }
-        reserved += candidate.path
-        return candidate
-    }
-
-    private fun mimeOf(file: File): String =
-        MimeTypeMap.getSingleton().getMimeTypeFromExtension(file.extension.lowercase(Locale.US))
-            ?: when (file.extension.lowercase(Locale.US)) {
-                "heic", "heif" -> "image/heic"
-                "mkv" -> "video/x-matroska"
-                "opus" -> "audio/ogg"
-                else -> "application/octet-stream"
-            }
 
     private fun disposition(kind: String, name: String): String {
         val ascii = name.map { if (it.code in 32..126 && it != '"' && it != '\\') it else '_' }.joinToString("")
@@ -495,41 +648,16 @@ class TransferServer(private val context: Context) {
         if (paths.isNotEmpty()) MediaScannerConnection.scanFile(context, paths.toTypedArray(), null, null)
     }
 
+    private fun cleanName(name: String?) = Names.clean(name) ?: throw HttpError(400, "Invalid name")
+
     // ------------------------------------------------------------------
-    // API: info and listing
+    // API: browsing the phone
     // ------------------------------------------------------------------
 
-    private fun info(req: Request, out: OutputStream): Boolean {
-        val device = runCatching { Settings.Global.getString(context.contentResolver, Settings.Global.DEVICE_NAME) }
-            .getOrNull()?.takeIf { it.isNotBlank() } ?: "${Build.MANUFACTURER} ${Build.MODEL}"
-        val vols = JSONArray()
-        volumes().forEach {
-            vols.put(JSONObject().put("name", it.name).put("path", it.root.path)
-                .put("total", it.root.totalSpace).put("free", it.root.usableSpace))
-        }
-        val places = JSONArray()
-        val added = HashSet<String>()
-        val internal = volumes().first().root
-        PLACES.forEach { (name, rel, icon) ->
-            val dir = File(internal, rel)
-            // First existing folder wins (Screenshots live in Pictures or DCIM depending on the phone)
-            if (name !in added && dir.isDirectory) {
-                added += name
-                places.put(JSONObject().put("name", name).put("path", dir.path).put("icon", icon))
-            }
-        }
-        return ok(out, req, JSONObject()
-            .put("device", device)
-            .put("requirePin", FileTransfer.requirePin(context))
-            .put("readOnly", FileTransfer.readOnly(context))
-            .put("volumes", vols)
-            .put("places", places))
-    }
-
-    private fun list(req: Request, out: OutputStream): Boolean {
-        val dir = resolve(req.param("path") ?: volumes().first().root.path)
+    private fun list(req: Request, out: OutputStream, device: Hub.Device): Boolean {
+        val first = roots(device).firstOrNull() ?: throw HttpError(403, "The phone hasn't shared its files with this device")
+        val (dir, root) = resolve(device, req.param("path") ?: first.dir.path)
         if (!dir.isDirectory) throw HttpError(404, "Folder not found")
-        val volume = volumeOf(dir)!!
         val children = dir.listFiles() ?: throw HttpError(403, "Android does not allow opening this folder")
         val items = JSONArray()
         children.forEach { f ->
@@ -540,30 +668,26 @@ class TransferServer(private val context: Context) {
                 .put("s", if (isDir) (f.list()?.size ?: 0).toLong() else f.length())
                 .put("m", f.lastModified()))
         }
-        val isRoot = dir == volume.root
+        val isRoot = dir == root.dir
         return ok(out, req, JSONObject()
             .put("path", dir.path)
-            .put("name", if (isRoot) volume.name else dir.name)
-            .put("root", volume.root.path)
-            .put("volume", volume.name)
+            .put("name", if (isRoot) root.name else dir.name)
+            .put("root", root.dir.path)
+            .put("volume", root.name)
             .put("parent", if (isRoot) JSONObject.NULL else dir.parent)
-            .put("free", volume.root.usableSpace)
-            .put("total", volume.root.totalSpace)
-            .put("writable", !FileTransfer.readOnly(context) && dir.canWrite())
+            .put("free", root.dir.usableSpace)
+            .put("total", root.dir.totalSpace)
+            .put("writable", root.writable && dir.canWrite())
             .put("items", items))
     }
 
-    // ------------------------------------------------------------------
-    // API: downloads
-    // ------------------------------------------------------------------
-
-    private fun file(req: Request, out: OutputStream): Boolean {
-        val file = resolve(req.param("path"))
+    private fun file(req: Request, out: OutputStream, device: Hub.Device): Boolean {
+        val (file, _) = resolve(device, req.param("path"))
         if (!file.isFile) throw HttpError(404, "File not found")
         if (!file.canRead()) throw HttpError(403, "Android does not allow reading this file")
         val download = req.param("dl") == "1"
         val length = file.length()
-        val type = mimeOf(file)
+        val type = Names.mime(file.name)
 
         var start = 0L
         var end = length - 1
@@ -600,7 +724,7 @@ class TransferServer(private val context: Context) {
         writeHead(out, if (partial) 206 else 200, headers, true)
         if (req.isHead || count <= 0) return true
 
-        val transfer = if (download && start == 0L) FileTransfer.begin(file.name, upload = false, total = length, client = req.client) else null
+        val transfer = if (download && start == 0L) FileTransfer.begin(file.name, Direction.FROM_PHONE, length, device.name) else null
         var ok = false
         try {
             FileInputStream(file).use { input ->
@@ -617,8 +741,8 @@ class TransferServer(private val context: Context) {
         return true
     }
 
-    private fun thumb(req: Request, out: OutputStream): Boolean {
-        val file = resolve(req.param("path"))
+    private fun thumb(req: Request, out: OutputStream, device: Hub.Device): Boolean {
+        val (file, _) = resolve(device, req.param("path"))
         if (!file.isFile) throw HttpError(404, "File not found")
         val size = (req.param("size")?.toIntOrNull() ?: THUMB).coerceIn(64, MAX_PREVIEW)
         val key = "${file.path}|${file.lastModified()}|$size"
@@ -637,7 +761,7 @@ class TransferServer(private val context: Context) {
 
     @Suppress("DEPRECATION")
     private fun makeThumb(file: File, size: Int): ByteArray? {
-        val type = mimeOf(file)
+        val type = Names.mime(file.name)
         val bitmap: Bitmap = runCatching {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 val s = Size(size, size)
@@ -678,12 +802,12 @@ class TransferServer(private val context: Context) {
     }
 
     /** Selected files and folders as one zip, streamed while it is built (no temp file). */
-    private fun zip(req: Request, out: OutputStream): Boolean {
+    private fun zip(req: Request, out: OutputStream, device: Hub.Device): Boolean {
         val form = if (req.method == "POST") parseForm(req.body.text(1024 * 1024)) else req.query
-        val dir = resolve(form["path"]?.firstOrNull())
+        val (dir, _) = resolve(device, form["path"]?.firstOrNull())
         if (!dir.isDirectory) throw HttpError(404, "Folder not found")
         val names = form["name"].orEmpty()
-        val selected = if (names.isEmpty()) listOf(dir) else names.map { resolve(File(dir, cleanName(it)).path) }
+        val selected = if (names.isEmpty()) listOf(dir) else names.map { resolve(device, File(dir, cleanName(it)).path).first }
         val base = if (names.isEmpty()) dir.parentFile ?: dir else dir
         val zipName = (if (selected.size == 1) selected[0].name else dir.name.ifEmpty { "files" }) + ".zip"
 
@@ -696,7 +820,7 @@ class TransferServer(private val context: Context) {
         ), keepAlive = false)
         if (req.isHead) return false
 
-        val transfer = FileTransfer.begin(zipName, upload = false, total = total, client = req.client)
+        val transfer = FileTransfer.begin(zipName, Direction.FROM_PHONE, total, device.name)
         var ok = false
         try {
             val zip = ZipOutputStream(out)
@@ -729,19 +853,20 @@ class TransferServer(private val context: Context) {
     // API: changes (uploads, new folder, rename, delete)
     // ------------------------------------------------------------------
 
-    private fun upload(req: Request, out: OutputStream): Boolean {
-        checkWritable()
-        val dir = resolve(req.param("path"))
+    private fun upload(req: Request, out: OutputStream, device: Hub.Device): Boolean {
+        val (dir, root) = resolve(device, req.param("path"))
+        requireWritable(root)
         if (!dir.isDirectory) throw HttpError(404, "Folder not found")
         val length = req.headers["content-length"]?.toLongOrNull() ?: throw HttpError(411, "Missing file size")
-        val requested = resolve(File(dir, cleanRelative(req.param("name"))).path)
+        val relative = Names.cleanRelative(req.param("name")) ?: throw HttpError(400, "Invalid name")
+        val requested = resolve(device, File(dir, relative).path).first
         val parent = requested.parentFile ?: throw HttpError(400, "Invalid name")
         if (!parent.isDirectory && !parent.mkdirs()) throw HttpError(403, "Can't create folder ${parent.name}")
         if (length > parent.usableSpace) throw HttpError(507, "Not enough free space on the phone")
 
-        val target = reserveUnique(requested)
+        val target = Names.reserveUnique(requested)
         val temp = File(parent, ".${target.name}.part")
-        val transfer = FileTransfer.begin(target.name, upload = true, total = length, client = req.client)
+        val transfer = FileTransfer.begin(target.name, Direction.TO_PHONE, length, device.name)
         var ok = false
         try {
             var received = 0L
@@ -757,46 +882,56 @@ class TransferServer(private val context: Context) {
             ok = true
         } finally {
             if (!ok) temp.delete()
-            reserved -= target.path
+            Names.release(target)
             FileTransfer.end(transfer, ok)
         }
         scan(listOf(target.path))
         return ok(out, req, JSONObject().put("ok", true).put("name", target.name).put("path", target.path))
     }
 
-    private fun mkdir(req: Request, out: OutputStream): Boolean {
-        checkWritable()
-        val dir = resolve(req.param("path"))
+    private fun mkdir(req: Request, out: OutputStream, device: Hub.Device): Boolean {
+        val (dir, root) = resolve(device, req.param("path"))
+        requireWritable(root)
         val created = File(dir, cleanName(req.param("name")))
         if (created.exists()) throw HttpError(409, "\"${created.name}\" already exists")
         if (!created.mkdir()) throw HttpError(403, "Can't create a folder here")
         return ok(out, req, JSONObject().put("ok", true).put("path", created.path))
     }
 
-    private fun rename(req: Request, out: OutputStream): Boolean {
-        checkWritable()
-        val file = resolve(req.param("path"))
+    private fun rename(req: Request, out: OutputStream, device: Hub.Device): Boolean {
+        val (file, root) = resolve(device, req.param("path"))
+        requireWritable(root)
         if (!file.exists()) throw HttpError(404, "Not found")
-        if (volumes().any { it.root == file }) throw HttpError(403, "Can't rename a storage volume")
+        if (file == root.dir) throw HttpError(403, "Can't rename a shared folder from here")
         val target = File(file.parentFile, cleanName(req.param("name")))
         if (target.exists()) throw HttpError(409, "\"${target.name}\" already exists")
         if (!file.renameTo(target)) throw HttpError(403, "Can't rename \"${file.name}\"")
+        FileTransfer.log("${device.name} renamed ${file.name} to ${target.name}")
         scan(listOf(file.path, target.path))
         return ok(out, req, JSONObject().put("ok", true).put("path", target.path))
     }
 
-    private fun delete(req: Request, out: OutputStream): Boolean {
-        checkWritable()
+    private fun delete(req: Request, out: OutputStream, device: Hub.Device): Boolean {
         val paths = runCatching { JSONObject(req.body.text(1024 * 1024)).getJSONArray("paths") }
             .getOrElse { throw HttpError(400, "Nothing to delete") }
         val failed = JSONArray()
         val removed = mutableListOf<String>()
+        val names = mutableListOf<String>()
         for (i in 0 until paths.length()) {
-            val file = resolve(paths.getString(i))
-            if (volumes().any { it.root == file }) throw HttpError(403, "Can't delete a storage volume")
+            val (file, root) = resolve(device, paths.getString(i))
+            requireWritable(root)
+            if (file == root.dir) throw HttpError(403, "Can't delete a shared folder or storage volume")
             // Media files inside need their gallery entries removed too
             val contents = if (file.isDirectory) file.walkTopDown().filter { it.isFile }.take(5000).map { it.path }.toList() else listOf(file.path)
-            if (file.deleteRecursively()) removed += contents else failed.put(file.name)
+            if (file.deleteRecursively()) {
+                removed += contents
+                names += file.name
+            } else {
+                failed.put(file.name)
+            }
+        }
+        if (names.isNotEmpty()) {
+            FileTransfer.log("${device.name} deleted ${if (names.size == 1) names[0] else "${names.size} items"}", warning = true)
         }
         scan(removed)
         return ok(out, req, JSONObject().put("ok", failed.length() == 0).put("failed", failed))

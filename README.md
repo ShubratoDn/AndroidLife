@@ -74,7 +74,7 @@ every mode with an adjustable keyboard height.
 | **Night Screen** | Dims the screen below the lowest brightness; adjustable from the notification and Quick Settings |
 | **Scanner** | Reads QR codes and barcodes, with actions for links, Wi-Fi, contacts, and typing the code on the PC |
 | **QR & Barcode Maker** | QR codes in many designs, plus Code 128, EAN-13, EAN-8, UPC-A and Code 39 barcodes |
-| **File Transfer** | Browse, download and upload the phone's files from any web browser on a PC over the same Wi-Fi or hotspot; nothing to install on the PC |
+| **File Transfer** | Send files and text between the phone and PCs, or PC to PC through the phone, from any web browser on the same Wi-Fi or hotspot. New browsers must be approved on the phone and can't see its files unless given shared-folder or full access. Also in the share sheet as *Send to PC*. Nothing to install on the PCs |
 
 A fullscreen toggle is available on every screen and is remembered.
 

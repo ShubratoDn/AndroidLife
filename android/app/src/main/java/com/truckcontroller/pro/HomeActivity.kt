@@ -162,14 +162,14 @@ class HomeActivity : ToolActivity() {
                     if (NightScreen.isRunning) "On · ${NightScreen.level(this)} %" to true else "Screen dimmer" to false
                 },
                 open = { showNightScreenDialog() }),
-            Tool("File Transfer", "Phone ⇄ PC over Wi-Fi", R.drawable.ic_transfer, Color.parseColor("#38BDF8"),
+            Tool("File Transfer", "Phone ⇄ PCs over Wi-Fi", R.drawable.ic_transfer, Color.parseColor("#38BDF8"),
                 Category.UTILITY, "file transfer share send receive copy wifi wi-fi hotspot pc laptop computer browser " +
-                    "upload download photos videos music documents folder zip wireless",
+                    "upload download photos videos music documents folder zip wireless laptop to laptop text clipboard",
                 live = {
                     if (FileTransfer.isRunning) {
                         val ip = FileTransfer.addresses().firstOrNull()?.ip
                         (if (ip != null) "On · $ip" else "On · no Wi-Fi") to true
-                    } else "Phone ⇄ PC over Wi-Fi" to false
+                    } else "Phone ⇄ PCs over Wi-Fi" to false
                 },
                 open = go(FileTransferActivity::class.java)),
             Tool("Scanner", "QR codes & barcodes", R.drawable.ic_qr, color(R.color.cyan_400),

@@ -8,30 +8,48 @@ import android.os.Build
 import android.os.Environment
 import android.os.SystemClock
 import androidx.core.content.ContextCompat
+import org.json.JSONArray
+import org.json.JSONObject
+import java.io.File
 import java.net.Inet4Address
 import java.net.NetworkInterface
 import java.security.SecureRandom
-import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicLong
 
 /**
  * File Transfer: the phone serves a web page on the local network (same Wi-Fi, either device's
- * hotspot, or USB tethering). Any browser on a PC opens it to browse, download and upload files;
- * nothing is installed on the PC. State lives here, [FileTransferService] runs [TransferServer].
+ * hotspot, or USB tethering). Browsers on PCs connect only after the phone approves them, then
+ * send files and text to each other and to the phone through it, and may browse the phone's
+ * storage when their access level allows. Nothing is installed on the PCs.
+ * Settings and live state live here; [FileTransferService] runs [Hub] and [TransferServer].
  */
 object FileTransfer {
 
     const val DEFAULT_PORT = 8080
-    /** A browser that polled within this time counts as connected. */
-    private const val CLIENT_TIMEOUT_MS = 45_000L
     private const val HISTORY = 20
+    private const val LOG_SIZE = 60
 
     private const val PREFS = "file_transfer"
-    private const val KEY_REQUIRE_PIN = "require_pin"
-    private const val KEY_READ_ONLY = "read_only"
+    private const val KEY_ALLOW_PIN = "allow_pin"
+    private const val KEY_DEFAULT_ACCESS = "default_access"
+    private const val KEY_SHARED_FOLDERS = "shared_folders"
+    private const val KEY_AUTO_STOP = "auto_stop_minutes"
+    internal const val KEY_REMEMBERED = "remembered_devices"
 
     enum class ServerState { OFF, STARTING, RUNNING }
+
+    /** What a connected browser may do. Every browser can send and receive; the rest is opt-in. */
+    enum class Access(val title: String, val description: String) {
+        SEND("Send & receive only", "Can send files and text to other devices and receive them. Can't see the phone's files."),
+        FOLDERS("Shared folders", "Can also open the folders you share in Security › Shared folders."),
+        FULL("All files", "Can browse, download, change and delete everything in the phone's storage."),
+    }
+
+    /** A folder browsers with [Access.FOLDERS] may open; [writable] lets them upload, rename and delete in it. */
+    data class SharedFolder(val path: String, val writable: Boolean) {
+        val name: String get() = File(path).name.ifEmpty { path }
+    }
 
     @Volatile var state = ServerState.OFF
         internal set
@@ -43,20 +61,51 @@ object FileTransfer {
     /** Why the server could not start (port in use, no storage access). */
     @Volatile var error: String? = null
         internal set
+    /** Devices, approvals, shares and texts while the server runs. */
+    @Volatile var hub: Hub? = null
+        internal set
 
     val isRunning get() = state == ServerState.RUNNING
 
+    /** Where files sent to the phone are saved. */
+    val receivedDir: File
+        get() = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "PhoneDeck")
+
     // ------------------------------------------------------------------
-    // Options (read live by the server on every request)
+    // Settings
     // ------------------------------------------------------------------
 
-    fun requirePin(context: Context) = prefs(context).getBoolean(KEY_REQUIRE_PIN, true)
-    fun setRequirePin(context: Context, value: Boolean) = prefs(context).edit().putBoolean(KEY_REQUIRE_PIN, value).apply()
+    fun allowPin(context: Context) = prefs(context).getBoolean(KEY_ALLOW_PIN, true)
+    fun setAllowPin(context: Context, value: Boolean) = prefs(context).edit().putBoolean(KEY_ALLOW_PIN, value).apply()
 
-    fun readOnly(context: Context) = prefs(context).getBoolean(KEY_READ_ONLY, false)
-    fun setReadOnly(context: Context, value: Boolean) = prefs(context).edit().putBoolean(KEY_READ_ONLY, value).apply()
+    /** Access given to a device approved from the notification or with the PIN. */
+    fun defaultAccess(context: Context): Access =
+        runCatching { Access.valueOf(prefs(context).getString(KEY_DEFAULT_ACCESS, null)!!) }.getOrDefault(Access.SEND)
+    fun setDefaultAccess(context: Context, access: Access) =
+        prefs(context).edit().putString(KEY_DEFAULT_ACCESS, access.name).apply()
 
-    private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+    /** Stop the server after this many minutes without any connected browser; 0 = never. */
+    fun autoStopMinutes(context: Context) = prefs(context).getInt(KEY_AUTO_STOP, 30)
+    fun setAutoStopMinutes(context: Context, minutes: Int) = prefs(context).edit().putInt(KEY_AUTO_STOP, minutes).apply()
+
+    fun sharedFolders(context: Context): List<SharedFolder> {
+        val json = prefs(context).getString(KEY_SHARED_FOLDERS, null) ?: return emptyList()
+        return runCatching {
+            val array = JSONArray(json)
+            (0 until array.length()).map {
+                val o = array.getJSONObject(it)
+                SharedFolder(o.getString("path"), o.optBoolean("writable", false))
+            }
+        }.getOrDefault(emptyList())
+    }
+
+    fun setSharedFolders(context: Context, folders: List<SharedFolder>) {
+        val array = JSONArray()
+        folders.distinctBy { it.path }.forEach { array.put(JSONObject().put("path", it.path).put("writable", it.writable)) }
+        prefs(context).edit().putString(KEY_SHARED_FOLDERS, array.toString()).apply()
+    }
+
+    internal fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
     // ------------------------------------------------------------------
     // Start / stop
@@ -125,7 +174,9 @@ object FileTransfer {
     // Live activity shown on the phone
     // ------------------------------------------------------------------
 
-    class Transfer(val name: String, val upload: Boolean, val total: Long, val client: String) {
+    enum class Direction { TO_PHONE, FROM_PHONE, RELAY }
+
+    class Transfer(val name: String, val direction: Direction, val total: Long, val peer: String) {
         val id = ids.incrementAndGet()
         val startedAt = SystemClock.elapsedRealtime()
         @Volatile var done = 0L
@@ -143,14 +194,17 @@ object FileTransfer {
 
     private val ids = AtomicLong()
     val transfers = CopyOnWriteArrayList<Transfer>()
-    private val clients = ConcurrentHashMap<String, Long>()
 
     /** Bytes sent to and received from browsers since the server started. */
     val bytesSent = AtomicLong()
     val bytesReceived = AtomicLong()
 
-    internal fun begin(name: String, upload: Boolean, total: Long, client: String): Transfer =
-        Transfer(name, upload, total, client).also { transfers.add(0, it) }
+    /** Last request from any browser (for auto-stop). */
+    @Volatile var lastActivity = 0L
+        private set
+
+    internal fun begin(name: String, direction: Direction, total: Long, peer: String): Transfer =
+        Transfer(name, direction, total, peer).also { transfers.add(0, it) }
 
     internal fun end(transfer: Transfer, ok: Boolean) {
         transfer.failed = !ok
@@ -161,22 +215,29 @@ object FileTransfer {
         transfers.removeAll(old.toSet())
     }
 
-    internal fun seen(client: String) {
-        clients[client] = SystemClock.elapsedRealtime()
-    }
-
-    /** Browsers active in the last [CLIENT_TIMEOUT_MS]. */
-    fun connectedClients(): List<String> {
-        val now = SystemClock.elapsedRealtime()
-        return clients.filterValues { now - it < CLIENT_TIMEOUT_MS }.keys.sorted()
+    internal fun seen() {
+        lastActivity = SystemClock.elapsedRealtime()
     }
 
     val activeTransfers get() = transfers.filter { !it.finished }
 
+    // ------------------------------------------------------------------
+    // Security log
+    // ------------------------------------------------------------------
+
+    class LogEntry(val time: Long, val text: String, val warning: Boolean)
+
+    val log = CopyOnWriteArrayList<LogEntry>()
+
+    internal fun log(text: String, warning: Boolean = false) {
+        log.add(0, LogEntry(System.currentTimeMillis(), text, warning))
+        while (log.size > LOG_SIZE) log.removeAt(log.size - 1)
+    }
+
     internal fun reset() {
         transfers.clear()
-        clients.clear()
         bytesSent.set(0)
         bytesReceived.set(0)
+        lastActivity = SystemClock.elapsedRealtime()
     }
 }
