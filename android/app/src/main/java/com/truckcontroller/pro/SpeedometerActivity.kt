@@ -37,6 +37,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.truckcontroller.pro.speed.SpeedTracker
 import com.truckcontroller.pro.speed.TripHistory
 import com.truckcontroller.pro.speed.TripRecord
+import com.truckcontroller.pro.speed.TripRoute
 import java.text.DateFormat
 import java.util.Date
 import com.truckcontroller.pro.speed.SpeedTracker.TripState
@@ -267,6 +268,15 @@ class SpeedometerActivity : BaseActivity() {
             }
         }
         addView(ImageButton(context, null, 0, R.style.Cockpit_HeaderIcon).apply {
+            setImageResource(R.drawable.ic_route)
+            setColorFilter(color(R.color.slate_300))
+            contentDescription = "Route map"
+            setOnClickListener {
+                haptics.performButtonClickHaptic()
+                startActivity(RouteMapActivity.live(this@SpeedometerActivity))
+            }
+        }, LinearLayout.LayoutParams(dp(38), dp(34)).apply { marginEnd = dp(6) })
+        addView(ImageButton(context, null, 0, R.style.Cockpit_HeaderIcon).apply {
             setImageResource(R.drawable.ic_history)
             setColorFilter(color(R.color.slate_300))
             contentDescription = "Trip history"
@@ -373,10 +383,15 @@ class SpeedometerActivity : BaseActivity() {
                 setPadding(0, 0, 0, dp(8))
             })
             list.addView(mono(10f, R.color.slate_500).apply {
-                text = "Long-press a trip to delete it"
+                text = "Tap a trip to see its route · long-press to delete"
                 setPadding(0, 0, 0, dp(6))
             })
-            trips.forEach { trip -> list.addView(tripRow(trip) { dialog?.dismiss(); confirmDelete(trip) }) }
+            trips.forEach { trip ->
+                list.addView(tripRow(trip, onClick = {
+                    dialog?.dismiss()
+                    startActivity(RouteMapActivity.trip(this, trip.id))
+                }) { dialog?.dismiss(); confirmDelete(trip) })
+            }
         }
 
         val builder = MaterialAlertDialogBuilder(this)
@@ -396,12 +411,13 @@ class SpeedometerActivity : BaseActivity() {
         dialog = builder.show()
     }
 
-    private fun tripRow(trip: TripRecord, onLongPress: () -> Unit): View = LinearLayout(this).apply {
+    private fun tripRow(trip: TripRecord, onClick: () -> Unit, onLongPress: () -> Unit): View = LinearLayout(this).apply {
         val t = SpeedTracker
         orientation = LinearLayout.VERTICAL
         setBackgroundResource(R.drawable.bg_step_button)
         setPadding(dp(12), dp(10), dp(12), dp(10))
         isLongClickable = true
+        setOnClickListener { haptics.performButtonClickHaptic(); onClick() }
         setOnLongClickListener { onLongPress(); true }
 
         val dateFormat = DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT)
@@ -420,6 +436,10 @@ class SpeedometerActivity : BaseActivity() {
                 "moving avg ${t.formatSpeed(trip.movingAverageMps)} ${t.speedUnit}\n" +
                 "moving time ${t.formatDuration(trip.movingMs)}"
             setPadding(0, dp(2), 0, 0)
+        })
+        if (TripRoute.hasRoute(context, trip.id)) addView(mono(11f, R.color.emerald_400).apply {
+            text = "▸ Route on map"
+            setPadding(0, dp(4), 0, 0)
         })
         layoutParams = LinearLayout.LayoutParams(MATCH, WRAP).apply { bottomMargin = dp(6) }
     }

@@ -136,6 +136,12 @@
             android:launchMode="singleTop"
             android:screenOrientation="fullUser" />
 
+        <!-- Trip route on OpenStreetMap: live while recording, or a saved trip -->
+        <activity
+            android:name=".RouteMapActivity"
+            android:exported="false"
+            android:screenOrientation="fullUser" />
+
         <activity
             android:name=".ScannerActivity"
             android:exported="false"

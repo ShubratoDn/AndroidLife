@@ -70,7 +70,7 @@ every mode with an adjustable keyboard height.
 ### Utilities
 | Tool | What it does |
 |---|---|
-| **Speedometer** | GPS speed with trips (distance, time, max and average speed) and saved trip history |
+| **Speedometer** | GPS speed with trips (distance, time, max and average speed), saved trip history, and each trip's route on an OpenStreetMap map: live while driving, coloured by speed afterwards, exportable as GPX |
 | **Night Screen** | Dims the screen below the lowest brightness; adjustable from the notification and Quick Settings |
 | **Scanner** | Reads QR codes and barcodes, with actions for links, Wi-Fi, contacts, and typing the code on the PC |
 | **QR & Barcode Maker** | QR codes in many designs, plus Code 128, EAN-13, EAN-8, UPC-A and Code 39 barcodes |

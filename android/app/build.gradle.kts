@@ -49,6 +49,8 @@ dependencies {
     implementation("io.github.zxing-cpp:android:2.2.0")
     // QR generator: encoder only, drawn with custom designs
     implementation("io.nayuki:qrcodegen:1.8.0")
+    // Trip routes on OpenStreetMap (no API key; tiles cached in the app's cache)
+    implementation("org.osmdroid:osmdroid-android:6.1.20")
 
     // LSPosed module: hooks run inside System UI, the API is provided by the framework at runtime
     compileOnly("de.robv.android.xposed:api:82")

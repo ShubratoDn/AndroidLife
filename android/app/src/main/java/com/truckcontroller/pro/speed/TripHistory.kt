@@ -47,9 +47,15 @@ object TripHistory {
 
     fun add(context: Context, trip: TripRecord) = save(context, (listOf(trip) + all(context)).take(MAX_TRIPS))
 
-    fun delete(context: Context, id: Long) = save(context, all(context).filterNot { it.id == id })
+    fun delete(context: Context, id: Long) {
+        save(context, all(context).filterNot { it.id == id })
+        TripRoute.delete(context, id)
+    }
 
-    fun clear(context: Context) = save(context, emptyList())
+    fun clear(context: Context) {
+        save(context, emptyList())
+        TripRoute.deleteSaved(context)
+    }
 
     private fun save(context: Context, trips: List<TripRecord>) {
         val array = JSONArray()

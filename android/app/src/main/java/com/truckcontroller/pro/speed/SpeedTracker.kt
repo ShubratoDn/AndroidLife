@@ -37,6 +37,9 @@ object SpeedTracker {
     var lastFixAt = 0L          // elapsedRealtime of the last fix
         private set
     val hasFix get() = lastFixAt != 0L && SystemClock.elapsedRealtime() - lastFixAt < STALE_MS
+    /** Latest position, for the map. */
+    var position: Location? = null
+        private set
 
     // Trip
     var tripState = TripState.IDLE
@@ -126,6 +129,7 @@ object SpeedTracker {
         lastFixAt = SystemClock.elapsedRealtime()
         accuracyM = if (location.hasAccuracy()) location.accuracy else -1f
         val accurate = location.hasAccuracy() && location.accuracy <= MAX_ACCURACY_M
+        position = location
 
         var speed = when {
             location.hasSpeed() -> location.speed
@@ -141,6 +145,7 @@ object SpeedTracker {
             // Only count distance while actually moving, so GPS drift at a standstill is ignored
             if (accurate && speed > 0f && gapOk && previous != null) distanceM += previous.distanceTo(location)
             if (accurate && reliableSpeed(location)) maxSpeedMps = max(maxSpeedMps, speed)
+            if (accurate) TripRoute.record(context, location, speed)
             save(context)
         }
         lastLocation = if (accurate || previous == null) location else previous
@@ -174,6 +179,7 @@ object SpeedTracker {
         startedAtWall = System.currentTimeMillis()
         tripState = TripState.RUNNING
         lastLocation = null
+        TripRoute.reset(context)
         save(context)
         notifyListeners()
     }
@@ -191,6 +197,7 @@ object SpeedTracker {
         runningSince = SystemClock.elapsedRealtime()
         tripState = TripState.RUNNING
         lastLocation = null // don't bridge the paused gap with a straight line
+        TripRoute.breakSegment(context)
         save(context)
         notifyListeners()
     }
@@ -219,6 +226,7 @@ object SpeedTracker {
                     maxSpeedMps = maxSpeedMps,
                 )
             )
+            TripRoute.saveForTrip(context, now)
         }
         notifyListeners()
     }
@@ -229,6 +237,7 @@ object SpeedTracker {
         maxSpeedMps = 0f
         movingMs = 0L
         accumulatedMs = 0L
+        TripRoute.reset(context)
         save(context)
         notifyListeners()
     }
