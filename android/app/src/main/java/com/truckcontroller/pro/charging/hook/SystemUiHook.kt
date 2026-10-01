@@ -5,6 +5,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.os.BatteryManager
 import android.os.Bundle
+import android.os.PowerManager
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
@@ -41,6 +42,8 @@ class SystemUiHook : IXposedHookLoadPackage {
         private const val FADE_MS = 300L
         /** HyperOS closes the charging screen by itself with these after about 2 seconds. */
         private val AUTO_DISMISS = setOf("dealWithAnimationShow", "dismiss_for_timeout")
+        /** HyperOS's charging code; it also turns the screen off ~20 s after the animation starts. */
+        private const val CHARGE_PACKAGE = "com.android.keyguard.charge."
     }
 
     /** PhoneDeck's view on the charging screen. */
@@ -48,6 +51,12 @@ class SystemUiHook : IXposedHookLoadPackage {
     /** The charging screen's own `startDismiss(String)`, used to close it when PhoneDeck's timer ends. */
     private var startDismiss: Member? = null
     private var timeout: Runnable? = null
+    /**
+     * HyperOS keeps the screen on for only ~2.5 s of its own animation; after that the lock screen
+     * timeout turns the screen off, which closes the charging screen. This keeps it on while
+     * PhoneDeck's animation shows.
+     */
+    private var screenLock: PowerManager.WakeLock? = null
 
     override fun handleLoadPackage(lpparam: XC_LoadPackage.LoadPackageParam) {
         when (lpparam.packageName) {
@@ -85,8 +94,18 @@ class SystemUiHook : IXposedHookLoadPackage {
                             return
                         }
                         cancelTimeout(screen)
+                        releaseScreen()
                     }
                 }).hookedMethod
+            // MiuiChargeController calls PowerManager.goToSleep() ~20 s after the animation starts,
+            // which overrides any wake lock. Skip it while PhoneDeck's animation is showing.
+            XposedBridge.hookAllMethods(PowerManager::class.java, "goToSleep", object : XC_MethodHook() {
+                override fun beforeHookedMethod(param: MethodHookParam) {
+                    if (current?.get()?.isAttachedToWindow != true || timeout == null) return
+                    val fromCharge = Throwable().stackTrace.any { it.className.startsWith(CHARGE_PACKAGE) }
+                    if (fromCharge) param.result = null
+                }
+            })
             XposedBridge.log("PhoneDeck: charging animation hook installed")
         }.onFailure { XposedBridge.log("PhoneDeck: charging animation hook not installed: $it") }
     }
@@ -109,20 +128,51 @@ class SystemUiHook : IXposedHookLoadPackage {
 
         if (host != null) {
             cancelTimeout(host)
-            if (!settings.getBoolean(ChargingAnimation.KEY_STAY_ON, false)) {
-                val close = Runnable {
-                    timeout = null
-                    startDismiss?.let { runCatching { XposedBridge.invokeOriginalMethod(it, host, arrayOf("dismiss_for_timeout")) } }
-                }
-                timeout = close
-                host.postDelayed(close, ChargingAnimation.SHOW_SECONDS * 1000L)
+            val showMs = if (settings.getBoolean(ChargingAnimation.KEY_STAY_ON, false)) {
+                ChargingAnimation.STAY_ON_MINUTES * 60_000L
+            } else {
+                ChargingAnimation.SHOW_SECONDS * 1000L
             }
+            keepScreenOn(host.context, showMs)
+            val close = Runnable {
+                timeout = null
+                releaseScreen()
+                startDismiss?.let { runCatching { XposedBridge.invokeOriginalMethod(it, host, arrayOf("dismiss_for_timeout")) } }
+            }
+            timeout = close
+            host.postDelayed(close, showMs)
         }
+        // Whatever removes the view (unlock, unplug, System UI closing it) also lets the screen sleep again
+        view.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
+            override fun onViewAttachedToWindow(v: View) = Unit
+            override fun onViewDetachedFromWindow(v: View) {
+                if (current?.get() === v || current?.get() == null) releaseScreen()
+            }
+        })
     }
 
     private fun cancelTimeout(screen: View) {
         timeout?.let { screen.removeCallbacks(it) }
         timeout = null
+    }
+
+    @Suppress("DEPRECATION") // the same lock HyperOS takes for its own charging animation
+    private fun keepScreenOn(context: Context, durationMs: Long) {
+        releaseScreen()
+        screenLock = runCatching {
+            context.getSystemService(PowerManager::class.java)
+                .newWakeLock(PowerManager.SCREEN_BRIGHT_WAKE_LOCK or PowerManager.ON_AFTER_RELEASE, "PhoneDeck:charging")
+                .apply {
+                    setReferenceCounted(false)
+                    // Safety net: never longer than the show time
+                    acquire(durationMs + 2_000)
+                }
+        }.onFailure { XposedBridge.log("PhoneDeck: can't keep the screen on: $it") }.getOrNull()
+    }
+
+    private fun releaseScreen() {
+        screenLock?.let { runCatching { if (it.isHeld) it.release() } }
+        screenLock = null
     }
 
     private fun isPlugged(context: Context): Boolean {
