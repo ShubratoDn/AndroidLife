@@ -56,6 +56,8 @@ class Hub(private val context: Context) {
         private const val MAX_FILES = 10_000
         private const val MAX_SHARES = 200
         private const val TEXT_HISTORY = 30
+        private const val CLIP_HISTORY = 20
+        private const val MAX_CLIP = 100_000
         private const val BUFFER = 256 * 1024
         internal const val KICKED = "{\"type\":\"kicked\"}"
 
@@ -83,6 +85,8 @@ class Hub(private val context: Context) {
         fun onShareChanged(share: Share) {}
         /** Text sent to the phone. */
         fun onText(text: TextMessage) {}
+        /** A PC set the shared clipboard: put it on the phone's clipboard. */
+        fun onClip(clip: ClipItem) {}
     }
 
     @Volatile var listener: Listener? = null
@@ -420,6 +424,7 @@ class Hub(private val context: Context) {
             .forEach { list += shareJson(it) }
         texts.reversed().filter { t -> t.fromId == device.id || t.to.any { it.first == device.id } }
             .forEach { list += textJson(it) }
+        clips.reversed().forEach { list += clipJson(it) }
         return list
     }
 
@@ -983,6 +988,55 @@ class Hub(private val context: Context) {
             .put("from", JSONObject().put("id", t.fromId).put("name", t.fromName))
             .put("to", to).put("text", t.text).put("time", t.time)
     }
+
+    // ------------------------------------------------------------------
+    // Shared clipboard (phone and all connected browsers)
+    // ------------------------------------------------------------------
+
+    class ClipItem internal constructor(
+        val id: String,
+        val fromId: String,
+        val fromName: String,
+        val text: String,
+        val time: Long,
+    )
+
+    private val clips = CopyOnWriteArrayList<ClipItem>()
+
+    /** Newest first; kept in memory only, gone when File Transfer stops. */
+    fun clips(): List<ClipItem> = clips.toList()
+
+    /** A browser pasted [text]: share it and put it on the phone's clipboard. */
+    internal fun clipFromDevice(device: Device, text: String): ClipItem? =
+        addClip(device.id, device.name, text)?.also {
+            FileTransfer.log("${device.name} set the phone clipboard")
+            listener?.onClip(it)
+        }
+
+    /** The phone's clipboard, sent to every connected browser. Null when it's already the latest. */
+    fun clipFromPhone(text: String): ClipItem? = addClip(PHONE_ID, phoneName, text)
+
+    private fun addClip(fromId: String, fromName: String, text: String): ClipItem? {
+        if (text.isEmpty()) throw IllegalArgumentException("Nothing to copy")
+        if (text.length > MAX_CLIP) throw IllegalArgumentException("Too long for the clipboard (max $MAX_CLIP characters)")
+        val item: ClipItem
+        synchronized(clips) {
+            // The same text again (e.g. the phone noticing what a PC just set) isn't a new copy
+            if (clips.firstOrNull()?.text == text) return null
+            item = ClipItem(randomHex(8), fromId, fromName, text, System.currentTimeMillis())
+            clips.add(0, item)
+            while (clips.size > CLIP_HISTORY) clips.removeAt(clips.size - 1)
+        }
+        broadcast(clipJson(item))
+        return item
+    }
+
+    private fun clipJson(c: ClipItem): JSONObject = JSONObject()
+        .put("type", "clip")
+        .put("id", c.id)
+        .put("from", JSONObject().put("id", c.fromId).put("name", c.fromName))
+        .put("text", c.text)
+        .put("time", c.time)
 
     // ------------------------------------------------------------------
     // Housekeeping

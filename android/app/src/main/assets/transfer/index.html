@@ -292,6 +292,20 @@ nav.side { position: sticky; top: 76px; align-self: start; display: flex; flex-d
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
 .toast.err { background: var(--danger); color: #fff; }
 
+/* Clipboard */
+.clip { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; padding: 20px 20px 80px; max-width: 1300px; margin: 0 auto; }
+.paste-zone { cursor: text; }
+.paste-zone:focus { outline: none; border-color: var(--accent); background: var(--sel); }
+.clip textarea { margin-top: 12px; }
+.clip-latest { border: 1px solid var(--accent); background: var(--sel); border-radius: 14px; padding: 14px; }
+.clip-latest .head { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+.clip-latest .head .ic { width: 15px; height: 15px; }
+.clip-latest .head .time { margin-left: auto; }
+.clip-latest .text { white-space: pre-wrap; word-break: break-word; overflow-y: auto; font-size: 15px; max-height: 260px; margin-top: 8px; }
+.clip-latest .actions { display: flex; margin-top: 12px; }
+.clip-latest .actions button.primary { height: 42px; padding: 0 20px; }
+.clip-none { color: var(--muted); padding: 18px; text-align: center; border: 1.5px dashed var(--border-2); border-radius: 14px; }
+
 /* Live view */
 .live { padding: 16px 20px 24px; max-width: 1400px; margin: 0 auto; }
 .live-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
@@ -312,6 +326,7 @@ nav.side { position: sticky; top: 76px; align-self: start; display: flex; flex-d
 .live-badge { font-size: 10px; font-weight: 800; letter-spacing: .06em; color: #fff; background: #EF4444; border-radius: 6px; padding: 1px 5px; }
 
 @media (max-width: 900px) {
+  .clip { grid-template-columns: minmax(0, 1fr); padding: 14px 16px 80px; }
   .send { grid-template-columns: minmax(0, 1fr); padding: 14px 16px 80px; }
 }
 @media (max-width: 820px) {
@@ -376,6 +391,7 @@ nav.side { position: sticky; top: 76px; align-self: start; display: flex; flex-d
   <symbol id="i-copy" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></symbol>
   <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></symbol>
   <symbol id="i-logout" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></symbol>
+  <symbol id="i-history" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8M3 3v5h5M12 7v5l4 2"/></symbol>
   <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.06 12.35a1 1 0 0 1 0-.7 10.75 10.75 0 0 1 19.88 0 1 1 0 0 1 0 .7 10.75 10.75 0 0 1-19.88 0"/><circle cx="12" cy="12" r="3"/></symbol>
   <symbol id="i-switch" viewBox="0 0 24 24"><path d="M11 19H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h5M13 5h7a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-5"/><circle cx="12" cy="12" r="3"/><path d="m18 22-3-3 3-3M6 2l3 3-3 3"/></symbol>
   <symbol id="i-flash" viewBox="0 0 24 24"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/></symbol>
@@ -425,6 +441,7 @@ nav.side { position: sticky; top: 76px; align-self: start; display: flex; flex-d
     <nav class="tabs" aria-label="Sections">
       <button data-tab="send" class="on"><svg class="ic sm"><use href="#i-send"/></svg>Send<span id="inboxBadge" class="badge" hidden></span></button>
       <button data-tab="files" id="tabFilesBtn"><svg class="ic sm"><use href="#i-phone"/></svg>Phone files</button>
+      <button data-tab="clip" id="tabClipBtn"><svg class="ic sm"><use href="#i-copy"/></svg>Clipboard<span id="clipBadge" class="badge" hidden>1</span></button>
       <button data-tab="live" id="tabLiveBtn"><svg class="ic sm"><use href="#i-eye"/></svg>Live<span id="liveBadge" class="live-badge" hidden>LIVE</span></button>
     </nav>
     <div class="me">
@@ -473,6 +490,38 @@ nav.side { position: sticky; top: 76px; align-self: start; display: flex; flex-d
         <h3><svg class="ic sm"><use href="#i-inbox"/></svg>Activity</h3>
         <div id="feed" class="feed"></div>
         <p id="feedEmpty" class="muted">Files and text you send or receive appear here. Keep this tab open to receive.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Shared clipboard -->
+  <section id="tabClip" class="clip" hidden>
+    <div class="col">
+      <div class="panel">
+        <h3>PC → phone</h3>
+        <div id="pasteZone" class="dropzone paste-zone" tabindex="0">
+          <svg class="ic"><use href="#i-copy"/></svg>
+          <b>Press Ctrl + V to send your clipboard to the phone</b>
+          <span class="muted">Copy anything on this PC, come back here and paste. It's on the phone's clipboard right away.</span>
+        </div>
+        <textarea id="clipInput" maxlength="100000" placeholder="Or type or paste text here, then Send"></textarea>
+        <div class="row">
+          <label class="toggle grow" id="clipAutoWrap" hidden><input type="checkbox" id="clipAuto"> Sync automatically</label>
+          <span class="muted grow" id="clipHint"></span>
+          <button id="clipSend" class="primary" type="button" disabled>Send to phone</button>
+        </div>
+      </div>
+      <div class="panel">
+        <h3>Phone → PC</h3>
+        <div id="clipLatest"></div>
+        <p class="muted">On the phone: copy text while PhoneDeck › File Transfer is open, or tap <b>Send clipboard</b> in its notification or the Quick Settings tile.</p>
+      </div>
+    </div>
+    <div class="col">
+      <div class="panel">
+        <h3><svg class="ic sm"><use href="#i-history"/></svg>History</h3>
+        <div id="clipHistory" class="feed"></div>
+        <p id="clipEmpty" class="muted">Nothing copied yet. History lives only until File Transfer stops.</p>
       </div>
     </div>
   </section>
@@ -742,12 +791,14 @@ function guessDevice() {
 const S = {
   me: null, phone: '', roots: [], places: [], tab: 'send', es: null,
   /** False while the history replayed on connect arrives: no toasts for old items. */
-  live: false,
+  ready: false,
   // Send
   devices: [], targets: new Set(), picked: [], shares: new Map(), texts: new Map(),
   outgoing: new Map(), uploading: new Set(), accepted: new Set(), downloaded: new Set(),
   // Live view
   live: null, liveSrc: null, streaming: null,
+  // Clipboard (newest first)
+  clips: [], clipUnseen: 0,
   // Phone files
   dir: null, items: [], shown: [], sel: new Set(), anchor: -1,
   view: store.get('view', 'grid'), sort: store.get('sort', 'name'), hidden: store.get('hidden', '0') === '1', filter: '',
@@ -918,10 +969,10 @@ function connectEvents() {
   if (S.es) S.es.close();
   const es = new EventSource('/api/events');
   S.es = es;
-  S.live = false;
+  S.ready = false;
   es.onopen = () => {
     $('#offline').hidden = true;
-    setTimeout(() => { if (S.es === es) S.live = true; }, 1500);
+    setTimeout(() => { if (S.es === es) S.ready = true; }, 1500);
   };
   es.onmessage = (e) => {
     let m;
@@ -966,13 +1017,16 @@ function onEvent(m) {
     case 'text': {
       const isNew = !S.texts.has(m.id);
       S.texts.set(m.id, m);
-      if (isNew && m.from.id !== S.me.id && S.live) toast('Text from ' + m.from.name);
+      if (isNew && m.from.id !== S.me.id && S.ready) toast('Text from ' + m.from.name);
       renderFeed();
       break;
     }
     case 'live':
       S.live = m;
       renderLive();
+      break;
+    case 'clip':
+      onClip(m);
       break;
     case 'kicked':
       if (S.es) { S.es.close(); S.es = null; }
@@ -1001,6 +1055,8 @@ function route() {
     load(path || (S.dir ? S.dir.path : S.roots[0].path));
   } else if (hash === 'live') {
     showTab('live');
+  } else if (hash === 'clip') {
+    showTab('clip');
   } else {
     showTab('send');
   }
@@ -1011,6 +1067,12 @@ function showTab(tab) {
   $('#tabSend').hidden = tab !== 'send';
   $('#tabFiles').hidden = tab !== 'files';
   $('#tabLive').hidden = tab !== 'live';
+  $('#tabClip').hidden = tab !== 'clip';
+  if (tab === 'clip') {
+    S.clipUnseen = 0;
+    renderClips();
+    setTimeout(() => $('#pasteZone').focus(), 30);
+  }
   document.querySelectorAll('.tabs button').forEach((b) => b.classList.toggle('on', b.dataset.tab === tab));
   $('#queue').hidden = tab !== 'files' || !Q.jobs.some((j) => j.status !== 'cancel');
   updateTitle();
@@ -1167,7 +1229,7 @@ function onShare(m, isNew) {
   }
   const r = m.recipients.find((x) => x.id === me);
   if (!r) return;
-  if (isNew && r.state === 'PENDING' && S.live) toast(m.from.name + ' wants to send you ' + shareTitle(m));
+  if (isNew && r.state === 'PENDING' && S.ready) toast(m.from.name + ' wants to send you ' + shareTitle(m));
   if (r.state === 'ACCEPTED' && S.accepted.has(m.id) && !S.downloaded.has(m.id)) {
     const ready = m.mode === 'RELAY' || m.mode === 'SOURCE' || m.upload.state === 'DONE';
     if (ready) {
@@ -1361,6 +1423,113 @@ function textCard(t) {
   }
   card.appendChild(actions);
   return card;
+}
+
+// ---------------------------------------------------------------------------
+// Clipboard: Ctrl + V sends the PC clipboard to the phone; the phone's arrives here
+// ---------------------------------------------------------------------------
+
+/* Over plain http the browser won't read or write the clipboard by itself; a paste or a click can.
+   If the page is treated as secure (e.g. Chrome's "Insecure origins treated as secure" flag),
+   sync becomes automatic in both directions. */
+const autoClip = window.isSecureContext && !!(navigator.clipboard && navigator.clipboard.readText);
+
+function onClip(m) {
+  if (S.clips.some((c) => c.id === m.id)) return;
+  S.clips.unshift(m);
+  if (S.clips.length > 20) S.clips.pop();
+  const mine = S.me && m.from.id === S.me.id;
+  if (!mine) S.lastPcClip = m.text;
+  if (!mine && S.ready) {
+    if (autoClip && $('#clipAuto').checked && document.hasFocus()) {
+      navigator.clipboard.writeText(m.text).then(() => toast('Copied from ' + m.from.name), () => {});
+    } else if (S.tab !== 'clip') {
+      S.clipUnseen++;
+      toast('Clipboard from ' + m.from.name + ' · open Clipboard to copy it');
+    }
+  }
+  renderClips();
+}
+
+function renderClips() {
+  $('#clipBadge').hidden = S.clipUnseen === 0;
+  $('#clipBadge').textContent = S.clipUnseen;
+  if (S.tab !== 'clip') return;
+  const latest = S.clips.find((c) => !S.me || c.from.id !== S.me.id);
+  const box = $('#clipLatest');
+  box.replaceChildren();
+  if (!latest) {
+    box.appendChild(el('div', 'clip-none', 'Nothing from the phone yet.'));
+  } else {
+    const card = el('div', 'clip-latest');
+    const head = el('div', 'head');
+    head.append(icon('phone'), el('span', null, 'From ' + latest.from.name), el('span', 'time', fmtTime(latest.time)));
+    head.className = 'head muted';
+    card.append(head, el('div', 'text', latest.text));
+    const actions = el('div', 'actions');
+    actions.appendChild(button('Copy to this PC', 'primary', () => copyText(latest.text), 'copy'));
+    card.appendChild(actions);
+    box.appendChild(card);
+  }
+  const history = $('#clipHistory');
+  history.replaceChildren();
+  S.clips.forEach((c) => {
+    const card = el('div', 'card');
+    const head = el('div', 'head');
+    const mine = S.me && c.from.id === S.me.id;
+    head.append(icon(mine ? 'monitor' : c.from.id === 'phone' ? 'phone' : 'monitor'),
+      el('span', null, mine ? 'From this PC' : 'From ' + c.from.name), el('span', 'time', fmtTime(c.time)));
+    const actions = el('div', 'actions');
+    actions.appendChild(button('Copy', '', () => copyText(c.text), 'copy'));
+    card.append(head, el('div', 'text', c.text), actions);
+    history.appendChild(card);
+  });
+  $('#clipEmpty').hidden = S.clips.length > 0;
+}
+
+async function sendClip(text, quiet) {
+  if (!text) return;
+  try {
+    const r = await post('/api/clip', { text });
+    if (!quiet) toast(r.duplicate ? 'The phone already has this' : 'On the phone\'s clipboard');
+  } catch (e) { fail(e); }
+}
+
+// Ctrl + V anywhere on the Clipboard tab (outside the text box) sends straight away
+document.addEventListener('paste', (e) => {
+  if (S.tab !== 'clip' || $('#app').hidden) return;
+  if (e.target === $('#clipInput')) return;
+  const text = e.clipboardData && e.clipboardData.getData('text/plain');
+  if (!text) { toast('Only text can go to the clipboard', true); return; }
+  e.preventDefault();
+  sendClip(text);
+});
+
+$('#clipInput').oninput = () => { $('#clipSend').disabled = !$('#clipInput').value; };
+$('#clipSend').onclick = async () => {
+  await sendClip($('#clipInput').value);
+  $('#clipInput').value = '';
+  $('#clipSend').disabled = true;
+};
+
+if (autoClip) {
+  $('#clipAutoWrap').hidden = false;
+  $('#clipAuto').checked = store.get('clipAuto', '1') === '1';
+  $('#clipAuto').onchange = (e) => store.set('clipAuto', e.target.checked ? '1' : '0');
+  $('#clipHint').hidden = true;
+  // Coming back to this window: send what was copied meanwhile on the PC
+  window.addEventListener('focus', async () => {
+    if (!S.me || !$('#clipAuto').checked) return;
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text && text !== S.lastPcClip && text !== (S.clips[0] && S.clips[0].text)) {
+        S.lastPcClip = text;
+        sendClip(text, true);
+      }
+    } catch (e) { /* permission not granted yet */ }
+  });
+} else {
+  $('#clipHint').textContent = 'Paste with Ctrl + V; copy with the Copy button.';
 }
 
 // ---------------------------------------------------------------------------

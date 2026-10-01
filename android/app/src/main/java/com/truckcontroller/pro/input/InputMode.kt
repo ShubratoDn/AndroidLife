@@ -15,8 +15,7 @@ enum class InputMode(
     KEYBOARD("Keyboard", "Standard keys with F-row and arrows", R.drawable.ic_keyboard, R.color.amber_400),
     NUMPAD_TOUCHPAD("Num Pad + Touchpad", "Numeric keypad with a touchpad", R.drawable.ic_numpad, R.color.emerald_400),
     KEYBOARD_FULL("Keyboard Complete", "Full 104 keys, nav cluster, numpad", R.drawable.ic_grid, R.color.blue_400),
-    PRESENTATION("Presentation Remote", "Slides, timer, laser pointer", R.drawable.ic_presentation, R.color.red_400),
-    AIR_MOUSE("Air Mouse", "Point the phone to move the pointer", R.drawable.ic_pointer, R.color.cyan_300),
+    PRESENTATION("Presentation Remote", "Slides, timer, laser & air pointer", R.drawable.ic_presentation, R.color.red_400),
     TYPE_TEXT("Type on PC", "Paste text, the PC types it", R.drawable.ic_type, R.color.amber_300),
 }
 

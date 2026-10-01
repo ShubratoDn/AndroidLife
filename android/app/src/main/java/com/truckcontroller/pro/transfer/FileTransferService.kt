@@ -24,6 +24,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.IntentCompat
+import com.truckcontroller.pro.ClipboardSendActivity
 import com.truckcontroller.pro.FileTransferActivity
 import com.truckcontroller.pro.R
 import com.truckcontroller.pro.formatBytes
@@ -349,6 +350,17 @@ class FileTransferService : Service() {
         override fun onText(text: Hub.TextMessage) {
             handler.post { notifyText(text) }
         }
+
+        override fun onClip(clip: Hub.ClipItem) {
+            handler.post {
+                // Writing the clipboard is allowed from the background (reading isn't)
+                getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText("PhoneDeck", clip.text))
+                // Android 13+ shows its own "copied" confirmation
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+                    Toast.makeText(this@FileTransferService, "Copied from ${clip.fromName}", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
     }
 
     private fun handleAction(intent: Intent) {
@@ -478,6 +490,10 @@ class FileTransferService : Service() {
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
             .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
             .addAction(R.drawable.ic_stop, "Stop", stop)
+            .addAction(R.drawable.ic_copy, "Send clipboard", PendingIntent.getActivity(
+                this, 3, Intent(this, ClipboardSendActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            ))
 
         if (FileTransfer.state != FileTransfer.ServerState.RUNNING) {
             return builder.setContentTitle("File Transfer").setContentText("Starting…").build()

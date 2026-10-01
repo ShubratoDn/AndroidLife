@@ -252,6 +252,27 @@
             android:exported="false"
             android:foregroundServiceType="location" />
 
+        <!-- Sends the clipboard to PCs: Android lets only the app on screen read it, so this shows for a moment -->
+        <activity
+            android:name=".ClipboardSendActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+
+        <!-- Quick Settings tile: send the clipboard to PCs -->
+        <service
+            android:name=".transfer.ClipboardTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_copy"
+            android:label="Send clipboard"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
         <!-- File Transfer web server for browsers on the local network -->
         <service
             android:name=".transfer.FileTransferService"

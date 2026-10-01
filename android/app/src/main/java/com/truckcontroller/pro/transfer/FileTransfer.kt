@@ -35,6 +35,7 @@ object FileTransfer {
     private const val KEY_DEFAULT_ACCESS = "default_access"
     private const val KEY_SHARED_FOLDERS = "shared_folders"
     private const val KEY_AUTO_STOP = "auto_stop_minutes"
+    private const val KEY_CLIP_FROM_PC = "clipboard_from_pc"
     internal const val KEY_REMEMBERED = "remembered_devices"
 
     enum class ServerState { OFF, STARTING, RUNNING }
@@ -87,6 +88,10 @@ object FileTransfer {
     /** Stop the server after this many minutes without any connected browser; 0 = never. */
     fun autoStopMinutes(context: Context) = prefs(context).getInt(KEY_AUTO_STOP, 30)
     fun setAutoStopMinutes(context: Context, minutes: Int) = prefs(context).edit().putInt(KEY_AUTO_STOP, minutes).apply()
+
+    /** Whether connected PCs may put text on the phone's clipboard. */
+    fun clipboardFromPc(context: Context) = prefs(context).getBoolean(KEY_CLIP_FROM_PC, true)
+    fun setClipboardFromPc(context: Context, value: Boolean) = prefs(context).edit().putBoolean(KEY_CLIP_FROM_PC, value).apply()
 
     fun sharedFolders(context: Context): List<SharedFolder> {
         val json = prefs(context).getString(KEY_SHARED_FOLDERS, null) ?: return emptyList()

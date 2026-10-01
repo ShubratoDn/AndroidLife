@@ -51,7 +51,7 @@ import java.util.Locale
 
 /**
  * Keyboard & mouse screens: keyboard + touchpad, keyboard, num pad + touchpad,
- * complete keyboard, presentation remote, air mouse and type on PC.
+ * complete keyboard, presentation remote (touch or air pointer) and type on PC.
  */
 class InputActivity : HidActivity() {
 
@@ -84,9 +84,10 @@ class InputActivity : HidActivity() {
     private var tvTimer: TextView? = null
     private var btnTimer: ActionTile? = null
 
-    // Air mouse
+    // Air pointer (presentation remote)
     private var airMouse: AirMouse? = null
-    private var airAlwaysOn = false
+    /** The pointer pad moves the pointer by motion instead of touch. */
+    private var airPointer = false
     private var airPad: TextView? = null
 
     // Type on PC
@@ -301,7 +302,6 @@ class InputActivity : HidActivity() {
         )
         InputMode.KEYBOARD_FULL -> keyboard(KeyboardLayouts.FULL)
         InputMode.PRESENTATION -> presentationRemote(portrait = false)
-        InputMode.AIR_MOUSE -> airMouseScreen(portrait = false)
         InputMode.TYPE_TEXT -> typeScreen(portrait = false)
     }
 
@@ -325,7 +325,6 @@ class InputActivity : HidActivity() {
             ) to 1f,
         )
         InputMode.PRESENTATION -> presentationRemote(portrait = true)
-        InputMode.AIR_MOUSE -> airMouseScreen(portrait = true)
         InputMode.TYPE_TEXT -> typeScreen(portrait = true)
     }
 
@@ -525,10 +524,7 @@ class InputActivity : HidActivity() {
             tile("LAST", R.drawable.ic_last, R.color.slate_400, "End") { keys(0, Hid.END) },
         )
         // Pointer pad for the laser pointer / clicking links
-        val pad = touchpad().apply {
-            hint = "POINTER"
-            showScrollStrip = false
-        }
+        val pad = pointerPanel()
         val hint = TextView(this, null, 0, R.style.Cockpit_Mono).apply {
             text = "Phone volume keys: \u25B2 previous  \u00B7  \u25BC next"
             textSize = 10f
@@ -638,22 +634,8 @@ class InputActivity : HidActivity() {
         }
     }
 
-    /** Presentation remote: the volume keys change slides. Air mouse: they are the mouse buttons. */
+    /** In presentation mode the phone's volume keys change slides. */
     override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
-        if (mode == InputMode.AIR_MOUSE) {
-            val mask = when (keyCode) {
-                KeyEvent.KEYCODE_VOLUME_DOWN -> BluetoothHidService.MOUSE_LEFT
-                KeyEvent.KEYCODE_VOLUME_UP -> BluetoothHidService.MOUSE_RIGHT
-                else -> 0
-            }
-            if (mask != 0) {
-                if (event.repeatCount == 0) {
-                    haptics.performButtonClickHaptic()
-                    hidService.setMouseButton(mask, true)
-                }
-                return true
-            }
-        }
         if (mode == InputMode.PRESENTATION && settings.volumeKeysForSlides) {
             when (keyCode) {
                 KeyEvent.KEYCODE_VOLUME_DOWN -> {
@@ -670,18 +652,6 @@ class InputActivity : HidActivity() {
     }
 
     override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean {
-        if (mode == InputMode.AIR_MOUSE) {
-            val mask = when (keyCode) {
-                KeyEvent.KEYCODE_VOLUME_DOWN -> BluetoothHidService.MOUSE_LEFT
-                KeyEvent.KEYCODE_VOLUME_UP -> BluetoothHidService.MOUSE_RIGHT
-                else -> 0
-            }
-            if (mask != 0) {
-                hidService.setMouseButton(mask, false)
-                afterMouseClick()
-                return true
-            }
-        }
         if (mode == InputMode.PRESENTATION && settings.volumeKeysForSlides &&
             (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN || keyCode == KeyEvent.KEYCODE_VOLUME_UP)
         ) return true
@@ -689,107 +659,78 @@ class InputActivity : HidActivity() {
     }
 
     // ------------------------------------------------------------------
-    // Air mouse
+    // Pointer pad (presentation remote): touchpad, or air pointer by moving the phone
     // ------------------------------------------------------------------
 
+    /** Sensors run only while the air pointer is the chosen pointer. */
     private fun startAirMouse() {
         val air = airMouse ?: return
-        if (!air.start()) {
-            renderAirPad(false)
-            return
-        }
-        air.active = airAlwaysOn
+        if (!airPointer) return
+        if (!air.start()) renderAirPad(false)
     }
 
-    private fun airMouseScreen(portrait: Boolean): View {
+    /**
+     * TOUCH: the usual touchpad. AIR: hold the pad and point the phone at the screen to move the
+     * pointer (gyroscope), tap to click; with LASER on it is a laser pointer you aim by hand.
+     */
+    private fun pointerPanel(): View {
         val prefs = getSharedPreferences("air_mouse", MODE_PRIVATE)
-        airAlwaysOn = prefs.getBoolean("always_on", false)
         val air = AirMouse(this) { dx, dy -> hidService.moveMouse(dx, dy) }.apply { speed = prefs.getFloat("speed", 1f) }
         airMouse = air
+        airPointer = air.available && prefs.getBoolean("presentation_air", false)
 
-        val pad = TextView(this, null, 0, R.style.Cockpit_Mono).apply {
+        val touch = touchpad().apply {
+            hint = "POINTER"
+            showScrollStrip = false
+        }
+        val airView = TextView(this, null, 0, R.style.Cockpit_Mono).apply {
             gravity = Gravity.CENTER
-            textSize = 13f
+            textSize = 12f
             letterSpacing = 0.1f
             setTypeface(typeface, Typeface.BOLD)
             setLineSpacing(0f, 1.3f)
         }
-        airPad = pad
+        airPad = airView
         renderAirPad(false)
-        bindAirPad(pad, air)
+        bindAirPad(airView, air)
 
-        val buttons = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            addView(mouseButton("LEFT", BluetoothHidService.MOUSE_LEFT), LinearLayout.LayoutParams(0, MATCH, 1.3f))
-            addView(mouseButton("MID", BluetoothHidService.MOUSE_MIDDLE), LinearLayout.LayoutParams(0, MATCH, 0.6f).apply {
-                marginStart = dp(6); marginEnd = dp(6)
-            })
-            addView(mouseButton("RIGHT", BluetoothHidService.MOUSE_RIGHT), LinearLayout.LayoutParams(0, MATCH, 1.3f))
+        val stack = FrameLayout(this).apply {
+            addView(touch, FrameLayout.LayoutParams(MATCH, MATCH))
+            addView(airView, FrameLayout.LayoutParams(MATCH, MATCH))
         }
-        val scroll = scrollStrip()
+        fun show() {
+            touch.visibility = if (airPointer) View.GONE else View.VISIBLE
+            airView.visibility = if (airPointer) View.VISIBLE else View.GONE
+        }
+        show()
 
-        val options = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            addView(SwitchMaterial(context).apply {
-                text = "Always on (no need to hold the pad)"
-                textSize = 13f
-                isChecked = airAlwaysOn
-                setTextColor(color(R.color.slate_300))
-                setOnCheckedChangeListener { _, checked ->
-                    click()
-                    airAlwaysOn = checked
-                    prefs.edit().putBoolean("always_on", checked).apply()
-                    air.active = checked
-                    renderAirPad(checked)
-                }
-            })
-            val speedLabel = TextView(context, null, 0, R.style.Cockpit_Mono).apply {
-                textSize = 11f
-                setTextColor(color(R.color.slate_400))
-                text = String.format(Locale.US, "POINTER SPEED %.1fx", air.speed)
+        val toggle = chipRow("POINTER", listOf("TOUCH", "AIR"), { if (airPointer) 1 else 0 }) { picked ->
+            val wantAir = picked == 1
+            if (wantAir && !air.available) {
+                Toast.makeText(this, "This phone has no gyroscope for the air pointer", Toast.LENGTH_SHORT).show()
+                return@chipRow
             }
-            addView(speedLabel, LinearLayout.LayoutParams(MATCH, WRAP).apply { topMargin = dp(4) })
-            addView(SeekBar(context).apply {
-                max = 27
-                progress = ((air.speed - 0.3f) * 10).toInt().coerceIn(0, 27)
-                setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-                    override fun onProgressChanged(sb: SeekBar?, p: Int, fromUser: Boolean) {
-                        air.speed = 0.3f + p / 10f
-                        speedLabel.text = String.format(Locale.US, "POINTER SPEED %.1fx", air.speed)
-                        prefs.edit().putFloat("speed", air.speed).apply()
-                    }
-                    override fun onStartTrackingTouch(sb: SeekBar?) = Unit
-                    override fun onStopTrackingTouch(sb: SeekBar?) = Unit
-                })
-            })
-            addView(TextView(context, null, 0, R.style.Cockpit_Mono).apply {
-                text = "Volume ▼ = left button (hold to drag) · Volume ▲ = right click"
-                textSize = 10f
-                setTextColor(color(R.color.slate_500))
-            }, LinearLayout.LayoutParams(MATCH, WRAP).apply { topMargin = dp(2) })
-        }
-
-        if (portrait) {
-            return LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL
-                addView(pad, LinearLayout.LayoutParams(MATCH, 0, 1f))
-                addView(buttons, LinearLayout.LayoutParams(MATCH, dp(64)).apply { topMargin = dp(10) })
-                addView(scroll, LinearLayout.LayoutParams(MATCH, dp(56)).apply { topMargin = dp(8) })
-                addView(options, LinearLayout.LayoutParams(MATCH, WRAP).apply { topMargin = dp(8) })
+            airPointer = wantAir
+            prefs.edit().putBoolean("presentation_air", wantAir).apply()
+            if (wantAir) {
+                startAirMouse()
+                Toast.makeText(this, "Hold the pad and point the phone at the screen", Toast.LENGTH_SHORT).show()
+            } else {
+                air.stop()
             }
+            touch.reset()
+            show()
         }
-        val side = LinearLayout(this).apply {
+        return LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            addView(buttons, LinearLayout.LayoutParams(MATCH, 0, 1f))
-            addView(scroll, LinearLayout.LayoutParams(MATCH, dp(52)).apply { topMargin = dp(8) })
-            addView(options, LinearLayout.LayoutParams(MATCH, WRAP).apply { topMargin = dp(6) })
+            addView(toggle, LinearLayout.LayoutParams(MATCH, WRAP))
+            addView(stack, LinearLayout.LayoutParams(MATCH, 0, 1f).apply { topMargin = dp(6) })
         }
-        return row(pad to 1.3f, side to 1f)
     }
 
     /**
-     * Hold the pad to move the pointer (unless always on). A short tap clicks; motion starts only
-     * after a brief hold so a tap doesn't nudge the pointer off its target.
+     * Hold the pad to move the pointer. A short tap clicks; motion starts only after a brief hold so
+     * a tap doesn't nudge the pointer off its target.
      */
     @SuppressLint("ClickableViewAccessibility")
     private fun bindAirPad(pad: View, air: AirMouse) {
@@ -807,15 +748,15 @@ class InputActivity : HidActivity() {
                     downY = e.y
                     moved = false
                     renderAirPad(true)
-                    if (!airAlwaysOn) handler.postDelayed(activate, 120)
+                    handler.postDelayed(activate, 120)
                 }
                 MotionEvent.ACTION_MOVE -> {
                     if (Math.hypot((e.x - downX).toDouble(), (e.y - downY).toDouble()) > slop) moved = true
                 }
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                     handler.removeCallbacks(activate)
-                    if (!airAlwaysOn) air.active = false
-                    renderAirPad(airAlwaysOn)
+                    air.active = false
+                    renderAirPad(false)
                     val tap = e.actionMasked == MotionEvent.ACTION_UP && !moved && SystemClock.uptimeMillis() - downAt < 220
                     if (tap) {
                         haptics.performButtonClickHaptic()
@@ -832,49 +773,15 @@ class InputActivity : HidActivity() {
         val pad = airPad ?: return
         val accent = color(mode.accent)
         pad.text = when {
-            airMouse?.available == false -> "NO GYROSCOPE\nAir mouse needs a gyroscope sensor"
-            airAlwaysOn -> "POINTING\nmove the phone · tap to click"
-            active -> "POINTING…"
-            else -> "HOLD TO POINT\npoint the phone at the screen\ntap to click"
+            airMouse?.available == false -> "NO GYROSCOPE\nthe air pointer needs a gyroscope"
+            active -> "POINTING\u2026"
+            else -> "HOLD TO POINT\npoint the phone at the screen \u00B7 tap to click"
         }
         pad.setTextColor(if (active) accent else color(R.color.slate_400))
         pad.background = GradientDrawable().apply {
-            cornerRadius = dp(18).toFloat()
+            cornerRadius = dp(14).toFloat()
             setColor(if (active) Color.argb(40, Color.red(accent), Color.green(accent), Color.blue(accent)) else color(R.color.panel_bg))
             setStroke(dp(if (active) 2 else 1), if (active) accent else color(R.color.border))
-        }
-    }
-
-    /** Drag up / down to scroll the PC (follows the natural scrolling setting). */
-    @SuppressLint("ClickableViewAccessibility")
-    private fun scrollStrip(): TextView = TextView(this, null, 0, R.style.Cockpit_Mono).apply {
-        text = "↕  DRAG TO SCROLL"
-        gravity = Gravity.CENTER
-        textSize = 11f
-        setTypeface(typeface, Typeface.BOLD)
-        setTextColor(color(R.color.slate_400))
-        setBackgroundResource(R.drawable.bg_step_button)
-        var lastY = 0f
-        var rest = 0f
-        setOnTouchListener { v, e ->
-            when (e.actionMasked) {
-                MotionEvent.ACTION_DOWN -> {
-                    v.isPressed = true
-                    lastY = e.y
-                    rest = 0f
-                }
-                MotionEvent.ACTION_MOVE -> {
-                    rest += (e.y - lastY) / dp(14) * settings.scrollSpeed
-                    lastY = e.y
-                    val ticks = rest.toInt()
-                    if (ticks != 0) {
-                        rest -= ticks
-                        hidService.scrollMouse(if (settings.naturalScroll) ticks else -ticks, 0)
-                    }
-                }
-                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> v.isPressed = false
-            }
-            true
         }
     }
 
@@ -1149,6 +1056,13 @@ class InputActivity : HidActivity() {
         switch("Tap to click", s.tapToClick) { s = s.copy(tapToClick = it); applySettings(s) }
         switch("Vibrate on key press", s.keyHaptics) { s = s.copy(keyHaptics = it); applySettings(s) }
         switch("Volume keys change slides (remote)", s.volumeKeysForSlides) { s = s.copy(volumeKeysForSlides = it); applySettings(s) }
+        if (mode == InputMode.PRESENTATION) {
+            val airPrefs = getSharedPreferences("air_mouse", MODE_PRIVATE)
+            slider({ String.format(Locale.US, "Air pointer speed: %.1fx", it) }, airPrefs.getFloat("speed", 1f), 0.3f, 3f) {
+                airPrefs.edit().putFloat("speed", it).apply()
+                airMouse?.speed = it
+            }
+        }
 
         MaterialAlertDialogBuilder(this)
             .setTitle("Keyboard & Mouse Settings")

@@ -107,7 +107,7 @@ with a phone full of colourful tool tiles in front.
 2. The home screen lists every tool in four categories:
    - **Game control**: *ETS2 Truck Controller*
    - **Keyboard & mouse**: *Keyboard + Touchpad*, *Keyboard*, *Num Pad + Touchpad*,
-     *Keyboard Complete*, *Presentation Remote*, *Air Mouse* and *Type on PC*
+     *Keyboard Complete*, *Presentation Remote* and *Type on PC*
    - **Phone tools**: *Device Info*, *Battery Info*, *Charging Meter*, *Storage Analyzer*,
      *Sensor Tester* and *Screen Time*
    - **Utilities**: *Speedometer*, *Night Screen*, *File Transfer*, *Live View*, *Scanner* and *QR & Barcode Maker*

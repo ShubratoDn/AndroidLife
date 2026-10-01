@@ -2,6 +2,7 @@ package com.truckcontroller.pro
 
 import android.Manifest
 import android.app.DownloadManager
+import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -186,11 +187,37 @@ class FileTransferActivity : ToolActivity() {
         if (startWhenAllowed) onStorageResult()
         renderSettings()
         handler.post(ticker)
+        getSystemService(ClipboardManager::class.java).addPrimaryClipChangedListener(clipListener)
     }
 
     override fun onPause() {
         super.onPause()
         handler.removeCallbacks(ticker)
+        getSystemService(ClipboardManager::class.java).removePrimaryClipChangedListener(clipListener)
+    }
+
+    /** While this screen is open, anything copied on the phone goes to the connected PCs. */
+    private val clipListener = ClipboardManager.OnPrimaryClipChangedListener {
+        val hub = FileTransfer.hub ?: return@OnPrimaryClipChangedListener
+        if (!FileTransfer.isRunning || hub.onlineDevices().isEmpty()) return@OnPrimaryClipChangedListener
+        val text = phoneClipboard() ?: return@OnPrimaryClipChangedListener
+        runCatching { hub.clipFromPhone(text) }.getOrNull()?.let { toast("Copied text sent to the PC") }
+    }
+
+    private fun phoneClipboard(): String? =
+        getSystemService(ClipboardManager::class.java).primaryClip
+            ?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.coerceToText(this)?.toString()?.takeIf { it.isNotEmpty() }
+
+    private fun sendClipboard() {
+        val hub = FileTransfer.hub
+        if (hub == null || hub.onlineDevices().isEmpty()) {
+            toast("No PC connected yet. Open the address on a PC first.")
+            return
+        }
+        val text = phoneClipboard() ?: return toast("The clipboard is empty")
+        runCatching { hub.clipFromPhone(text) }
+            .onSuccess { toast(if (it == null) "The PC already has this clipboard" else "Clipboard sent to the PC") }
+            .onFailure { toast(it.message ?: "Couldn't send") }
     }
 
     private fun LinearLayout.addCard(view: View) =
@@ -248,9 +275,12 @@ class FileTransferActivity : ToolActivity() {
         addView(LinearLayout(context).apply {
             orientation = LinearLayout.HORIZONTAL
             addView(button("Send files", filled = true) { sendFiles() }, LinearLayout.LayoutParams(0, dp(44), 1f))
-            addView(button("Send text", filled = false) { sendText() }, LinearLayout.LayoutParams(0, dp(44), 1f).apply { marginStart = dp(10) })
+            addView(button("Send text", filled = false) { sendText() }, LinearLayout.LayoutParams(0, dp(44), 1f).apply { marginStart = dp(8) })
+            addView(button("Clipboard", filled = false) { sendClipboard() }, LinearLayout.LayoutParams(0, dp(44), 1f).apply { marginStart = dp(8) })
         })
-        addView(hint("Or tap Share › Send to PC in any app. Files from PCs are saved in Download/PhoneDeck."),
+        addView(hint("Or tap Share › Send to PC in any app. Files from PCs are saved in Download/PhoneDeck.\n" +
+            "Clipboard: text you copy while this screen is open goes to the PCs; otherwise use \"Send clipboard\" " +
+            "in the notification or the Quick Settings tile. On the PC, press Ctrl + V on the Clipboard tab to send it here."),
             LinearLayout.LayoutParams(MATCH, WRAP).apply { topMargin = dp(8) })
         inboxBox = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
         addView(inboxBox, LinearLayout.LayoutParams(MATCH, WRAP).apply { topMargin = dp(4) })
@@ -289,6 +319,11 @@ class FileTransferActivity : ToolActivity() {
             addressKey = ""
         }, LinearLayout.LayoutParams(MATCH, WRAP).apply { topMargin = dp(16) })
         addView(hint("Off: every new device must be allowed on this phone."))
+
+        addView(switch("Let PCs change the phone clipboard", FileTransfer.clipboardFromPc(context)) {
+            FileTransfer.setClipboardFromPc(this@FileTransferActivity, it)
+        }, LinearLayout.LayoutParams(MATCH, WRAP).apply { topMargin = dp(12) })
+        addView(hint("Off: text pasted on a PC's Clipboard tab no longer reaches this phone."))
 
         addView(settingRow("Stop when idle", "") { chooseAutoStop() }.also {
             autoStopValue = it.getChildAt(1) as TextView

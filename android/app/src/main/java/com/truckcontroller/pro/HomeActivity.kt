@@ -119,8 +119,8 @@ class HomeActivity : ToolActivity() {
                 "keyboard mouse touchpad trackpad bluetooth pc laptop computer remote typing " + when (mode) {
                     InputMode.NUMPAD_TOUCHPAD -> "numpad numeric calculator"
                     InputMode.KEYBOARD_FULL -> "full 104 function keys numpad"
-                    InputMode.PRESENTATION -> "presentation slides powerpoint clicker laser pointer timer"
-                    InputMode.AIR_MOUSE -> "air mouse gyroscope gyro point pointer motion wave presentation remote tv"
+                    InputMode.PRESENTATION -> "presentation slides powerpoint clicker laser pointer timer " +
+                        "air mouse gyroscope gyro point motion remote tv"
                     InputMode.TYPE_TEXT -> "type text paste clipboard password code send text autotype typing"
                     else -> ""
                 }, open = { startActivity(InputActivity.intent(this, mode)) })

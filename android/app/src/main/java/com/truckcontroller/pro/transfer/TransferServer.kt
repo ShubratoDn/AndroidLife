@@ -411,6 +411,7 @@ class TransferServer(private val context: Context, private val hub: Hub) {
             req.path == "/api/shares/upload" && req.method == "PUT" -> shareUpload(req, out, device)
             req.path == "/api/shares/download" && get -> shareDownload(req, out, device)
             req.path == "/api/text" && post -> text(req, out, device)
+            req.path == "/api/clip" && post -> clip(req, out, device)
             req.path == "/api/live/stream" && get -> liveStream(req, out, device)
             req.path == "/api/live/snapshot" && get -> liveSnapshot(req, out, device)
             req.path == "/api/live/control" && post -> liveControl(req, out)
@@ -588,6 +589,14 @@ class TransferServer(private val context: Context, private val hub: Hub) {
         val to = body.optJSONArray("to") ?: throw HttpError(400, "Choose who to send to")
         hub.sendText(device.id, device.name, (0 until to.length()).map { to.getString(it) }, body.optString("text"))
         return ok(out, req)
+    }
+
+    /** The browser's pasted text becomes the shared clipboard (and the phone's). */
+    private fun clip(req: Request, out: OutputStream, device: Hub.Device): Boolean {
+        if (!FileTransfer.clipboardFromPc(context)) throw HttpError(403, "Clipboard sync from PCs is turned off on the phone")
+        val text = req.body.json(512 * 1024).optString("text")
+        val item = hub.clipFromDevice(device, text)
+        return ok(out, req, JSONObject().put("ok", true).put("duplicate", item == null))
     }
 
     // ------------------------------------------------------------------
