@@ -121,6 +121,23 @@ object FileTransfer {
         context.startService(Intent(context, FileTransferService::class.java).setAction(FileTransferService.ACTION_STOP))
     }
 
+    /** Live view: share the camera / screen with connected browsers (the server must be running). */
+    fun startCameraShare(context: Context) = send(context, FileTransferService.ACTION_CAMERA_START)
+    fun stopCameraShare(context: Context) = send(context, FileTransferService.ACTION_CAMERA_STOP)
+    fun stopScreenShare(context: Context) = send(context, FileTransferService.ACTION_SCREEN_STOP)
+
+    /** [resultCode] and [data] come from Android's screen capture consent. */
+    fun startScreenShare(context: Context, resultCode: Int, data: Intent) {
+        context.startService(Intent(context, FileTransferService::class.java)
+            .setAction(FileTransferService.ACTION_SCREEN_START)
+            .putExtra(FileTransferService.EXTRA_RESULT_CODE, resultCode)
+            .putExtra(FileTransferService.EXTRA_RESULT_DATA, data))
+    }
+
+    private fun send(context: Context, action: String) {
+        context.startService(Intent(context, FileTransferService::class.java).setAction(action))
+    }
+
     internal fun newPin(): String = String.format("%06d", SecureRandom().nextInt(1_000_000))
 
     // ------------------------------------------------------------------

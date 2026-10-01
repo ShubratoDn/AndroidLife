@@ -64,6 +64,9 @@
         tools:ignore="ScopedStorage" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
+    <!-- File Transfer live view: phone camera and screen in the PC's browser -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CAMERA" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
 
     <!-- Sensor Tester: step counter / detector -->
     <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
@@ -253,7 +256,7 @@
         <service
             android:name=".transfer.FileTransferService"
             android:exported="false"
-            android:foregroundServiceType="connectedDevice" />
+            android:foregroundServiceType="connectedDevice|camera|mediaProjection" />
 
         <!-- Night Screen dimmer overlay -->
         <service

@@ -386,6 +386,11 @@ class Hub(private val context: Context) {
         ids.mapNotNull { devices[it] }.forEach { d -> d.streams.forEach { it.offer(text) } }
     }
 
+    /** Sends [json] to every open browser tab. */
+    internal fun broadcast(json: JSONObject) {
+        devices.values.forEach { emit(it, json) }
+    }
+
     private fun broadcastDevices() {
         onlineKey = onlineDevices().joinToString { it.id + it.name }
         val json = devicesJson()
@@ -409,7 +414,7 @@ class Hub(private val context: Context) {
         .put("remembered", device.remembered)
 
     private fun snapshot(device: Device): List<JSONObject> {
-        val list = mutableListOf(meJson(device), devicesJson())
+        val list = mutableListOf(meJson(device), devicesJson(), LiveShare.statusJson())
         shares.values.sortedBy { it.created }
             .filter { it.fromId == device.id || it.recipients.containsKey(device.id) }
             .forEach { list += shareJson(it) }

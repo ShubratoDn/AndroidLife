@@ -17,6 +17,7 @@ import android.widget.Toast
 import androidx.core.content.ContextCompat
 import com.truckcontroller.pro.audio.SoundEngine
 import com.truckcontroller.pro.haptics.HapticFeedbackHelper
+import com.truckcontroller.pro.input.TiltSensor
 import com.truckcontroller.pro.model.CB_PRESETS
 import com.truckcontroller.pro.model.ConnectionState
 import com.truckcontroller.pro.model.ControllerSettings
@@ -68,6 +69,10 @@ class MainActivity : HidActivity() {
     private lateinit var btnHazard: ConsoleButton
     private lateinit var tvAngle: TextView
     private lateinit var tvOut: TextView
+    private lateinit var tilt: TiltSensor
+    private lateinit var tvTilt: TextView
+    /** Phone angle that counts as straight ahead. */
+    private var tiltCenter = 0f
 
     // Console
     private lateinit var tvGear: TextView
@@ -116,6 +121,7 @@ class MainActivity : HidActivity() {
         haptics = HapticFeedbackHelper(this)
         sounds = SoundEngine()
         settingsStore = SettingsStore(this)
+        tilt = TiltSensor(this) { degrees -> onTilt(degrees) }
 
         initViews()
         buildCbRadio()
@@ -131,8 +137,14 @@ class MainActivity : HidActivity() {
 
     override fun onConnectionChanged() = renderConnection()
 
+    override fun onResume() {
+        super.onResume()
+        if (settings.tiltSteering) tilt.start()
+    }
+
     override fun onPause() {
         super.onPause()
+        tilt.stop()
         // Never leave the truck accelerating, braking or honking while this screen is hidden
         steeringWheel.resetToCenter()
         state.gas = 0f
@@ -267,7 +279,42 @@ class MainActivity : HidActivity() {
                 sounds.stopHorn()
             }
         }
-        findViewById<View>(R.id.btnCenter).setOnClickListener { feedbackClick(); steeringWheel.resetToCenter() }
+        findViewById<View>(R.id.btnCenter).setOnClickListener {
+            feedbackClick()
+            if (settings.tiltSteering) {
+                // In tilt mode 0° means "the way I'm holding the phone now is straight"
+                tiltCenter = tilt.angle
+                getPreferences(MODE_PRIVATE).edit().putFloat("tiltCenter", tiltCenter).apply()
+                onTilt(tilt.angle)
+                Toast.makeText(this, "Straight ahead set", Toast.LENGTH_SHORT).show()
+            } else {
+                steeringWheel.resetToCenter()
+            }
+        }
+        // TILT toggle next to the 0° button
+        val center = findViewById<View>(R.id.btnCenter)
+        val row = center.parent as LinearLayout
+        tvTilt = TextView(this, null, 0, R.style.Cockpit_Mono).apply {
+            text = "TILT"
+            textSize = 11f
+            gravity = android.view.Gravity.CENTER
+            setTypeface(typeface, android.graphics.Typeface.BOLD)
+            setPadding(dp(10), 0, dp(10), 0)
+            setOnClickListener {
+                feedbackClick()
+                val on = !settings.tiltSteering
+                applySettings(settings.copy(tiltSteering = on))
+                Toast.makeText(
+                    this@MainActivity,
+                    if (on) "Tilt steering on: turn the phone like a wheel. Tap 0° to set straight ahead." else "Tilt steering off",
+                    Toast.LENGTH_LONG,
+                ).show()
+            }
+        }
+        row.addView(tvTilt, row.indexOfChild(center) + 1, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, dp(24)).apply {
+            marginStart = dp(6)
+        })
+        tiltCenter = getPreferences(MODE_PRIVATE).getFloat("tiltCenter", 0f)
 
         btnTurnLeft.setOnClickListener { toggleTurnSignal(TurnSignal.LEFT) }
         btnTurnRight.setOnClickListener { toggleTurnSignal(TurnSignal.RIGHT) }
@@ -520,7 +567,43 @@ class MainActivity : HidActivity() {
         sounds.volume = newSettings.soundVolume / 100f
         if (!newSettings.soundEnabled && state.engineRunning) sounds.stopEngine()
         state.shifterMode = newSettings.shifterMode
+        applyTilt()
         render()
+    }
+
+    /** Starts or stops the tilt sensor and keeps the screen from flipping while steering by tilt. */
+    private fun applyTilt() {
+        val on = settings.tiltSteering
+        if (on && !tilt.available) {
+            Toast.makeText(this, "This phone has no motion sensor for tilt steering", Toast.LENGTH_LONG).show()
+        }
+        val wasTilt = steeringWheel.tiltMode
+        steeringWheel.tiltMode = on
+        requestedOrientation = if (on) android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LOCKED
+            else android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+        if (on) {
+            tilt.start()
+        } else {
+            tilt.stop()
+            if (wasTilt) steeringWheel.resetToCenter()
+        }
+        if (::tvTilt.isInitialized) {
+            tvTilt.setTextColor(color(if (on) R.color.cockpit_bg else R.color.slate_300))
+            tvTilt.background = android.graphics.drawable.GradientDrawable().apply {
+                cornerRadius = dp(8).toFloat()
+                setColor(color(if (on) R.color.accent else R.color.step_bg))
+            }
+        }
+    }
+
+    /** Phone angle → wheel angle: [ControllerSettings.tiltRange] of phone rotation is full lock. */
+    private fun onTilt(phoneDegrees: Float) {
+        if (!settings.tiltSteering) return
+        var delta = phoneDegrees - tiltCenter
+        if (delta > 180f) delta -= 360f
+        if (delta < -180f) delta += 360f
+        val fraction = (delta / settings.tiltRange).coerceIn(-1f, 1f)
+        steeringWheel.setTiltAngle(fraction * steeringWheel.maxDegrees / 2f)
     }
 
     // ------------------------------------------------------------------

@@ -46,6 +46,14 @@ class SteeringWheelView @JvmOverloads constructor(
         }
 
     var onAngleChanged: ((angle: Float, normalized: Float) -> Unit)? = null
+
+    /** Steering comes from [setTiltAngle]; touches only work the horn. */
+    var tiltMode = false
+        set(value) {
+            field = value
+            steerPointerId = MotionEvent.INVALID_POINTER_ID
+            springRunning = false
+        }
     var onWheelLockHit: (() -> Unit)? = null
     var onGrab: (() -> Unit)? = null
     var onHornChanged: ((pressed: Boolean) -> Unit)? = null
@@ -214,7 +222,7 @@ class SteeringWheelView @JvmOverloads constructor(
                 if (dist <= hubRadius && hornPointerId == MotionEvent.INVALID_POINTER_ID) {
                     hornPointerId = event.getPointerId(index)
                     hornPressed = true
-                } else if (steerPointerId == MotionEvent.INVALID_POINTER_ID) {
+                } else if (!tiltMode && steerPointerId == MotionEvent.INVALID_POINTER_ID) {
                     steerPointerId = event.getPointerId(index)
                     prevTouchAngle = touchAngle(x, y)
                     onGrab?.invoke()
@@ -265,6 +273,18 @@ class SteeringWheelView @JvmOverloads constructor(
         if (springRunning || springStrength <= 0f) return
         springRunning = true
         postOnAnimation(springRunnable)
+    }
+
+    /** Sets the wheel to [degrees] from the phone's tilt (clamped to the lock). */
+    fun setTiltAngle(degrees: Float) {
+        val limit = maxDegrees / 2f
+        val newAngle = degrees.coerceIn(-limit, limit)
+        val hitLock = abs(newAngle) >= limit
+        if (hitLock && !atLock) onWheelLockHit?.invoke()
+        atLock = hitLock
+        if (abs(newAngle - currentAngle) < 0.05f) return
+        currentAngle = newAngle
+        publish()
     }
 
     /** Snaps the wheel back to dead center. */

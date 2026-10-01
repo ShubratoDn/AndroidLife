@@ -1,11 +1,17 @@
 package com.truckcontroller.pro
 
 import android.annotation.SuppressLint
+import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.content.res.Configuration
+import android.graphics.Color
 import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
+import android.text.Editable
+import android.text.InputType
+import android.text.TextWatcher
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -15,7 +21,9 @@ import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
+import android.view.ViewConfiguration
 import android.view.WindowManager
+import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.ImageButton
 import android.widget.ImageView
@@ -28,6 +36,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.switchmaterial.SwitchMaterial
 import com.truckcontroller.pro.bluetooth.BluetoothHidService
 import com.truckcontroller.pro.haptics.HapticFeedbackHelper
+import com.truckcontroller.pro.input.AirMouse
 import com.truckcontroller.pro.input.Hid
 import com.truckcontroller.pro.input.InputMode
 import com.truckcontroller.pro.input.InputSettings
@@ -36,12 +45,13 @@ import com.truckcontroller.pro.input.KeyboardLayout
 import com.truckcontroller.pro.input.KeyboardLayouts
 import com.truckcontroller.pro.input.KeyboardView
 import com.truckcontroller.pro.input.TouchpadView
+import com.truckcontroller.pro.model.ConnectionState
 import com.truckcontroller.pro.ui.ActionTile
 import java.util.Locale
 
 /**
  * Keyboard & mouse screens: keyboard + touchpad, keyboard, num pad + touchpad,
- * complete keyboard and presentation remote.
+ * complete keyboard, presentation remote, air mouse and type on PC.
  */
 class InputActivity : HidActivity() {
 
@@ -74,6 +84,23 @@ class InputActivity : HidActivity() {
     private var tvTimer: TextView? = null
     private var btnTimer: ActionTile? = null
 
+    // Air mouse
+    private var airMouse: AirMouse? = null
+    private var airAlwaysOn = false
+    private var airPad: TextView? = null
+
+    // Type on PC
+    private enum class TypeSpeed(val label: String, val keyMs: Long) { SLOW("SLOW", 40), NORMAL("NORMAL", 15), FAST("FAST", 6) }
+
+    private var typeInput: EditText? = null
+    private var typeInfo: TextView? = null
+    private var typeButton: ActionTile? = null
+    private var typingJob: BluetoothHidService.TypingJob? = null
+    private var countdownLeft = 0
+    private var typedCount = 0
+    private var pendingText = ""
+    private var pendingSpeed = TypeSpeed.NORMAL
+
     private enum class RotationLock(val label: String) { AUTO("Auto-rotate"), PORTRAIT("Portrait"), LANDSCAPE("Landscape") }
 
     private val orientationPrefs by lazy { getSharedPreferences("input_orientation", MODE_PRIVATE) }
@@ -94,6 +121,7 @@ class InputActivity : HidActivity() {
         }.getOrDefault(defaultLock)
         applyRotationLock()
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        if (mode == InputMode.TYPE_TEXT) window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
         setContentView(R.layout.activity_input)
 
         haptics = HapticFeedbackHelper(this)
@@ -145,17 +173,25 @@ class InputActivity : HidActivity() {
         hidService.removeLedListener(ledListener)
     }
 
+    override fun onResume() {
+        super.onResume()
+        startAirMouse()
+    }
+
     override fun onPause() {
         super.onPause()
+        airMouse?.stop()
         // Never leave a key or mouse button held down on the PC while this screen is hidden
         keyboards.forEach { it.reset() }
         touchpads.forEach { it.reset() }
-        hidService.releaseAllInput()
+        // Typing keeps going with the screen off; it releases its own keys
+        if (typingJob == null) hidService.releaseAllInput()
     }
 
     override fun onDestroy() {
         super.onDestroy()
         handler.removeCallbacksAndMessages(null)
+        typingJob?.cancel()
     }
 
     override val offerPairingOnFirstRun = true
@@ -192,7 +228,7 @@ class InputActivity : HidActivity() {
         tvConnection.maxWidth = dp(if (portrait) 110 else 150)
         val strip = findViewById<LinearLayout>(R.id.mediaStrip)
         strip.removeAllViews()
-        val showInHeader = !portrait && mode != InputMode.PRESENTATION
+        val showInHeader = !portrait && mode != InputMode.PRESENTATION && mode != InputMode.TYPE_TEXT
         strip.visibility = if (showInHeader) View.VISIBLE else View.GONE
         if (showInHeader) buildMediaStrip(strip, weighted = false)
     }
@@ -243,10 +279,13 @@ class InputActivity : HidActivity() {
         keyboards.clear()
         panelStates.clear()
         touchpads.clear()
+        airMouse?.stop()
+        airMouse = null
         renderHeader()
         val view = if (isPortrait) portraitContent() else landscapeContent()
         content.addView(view, FrameLayout.LayoutParams(MATCH, MATCH))
         renderTimer()
+        startAirMouse()
     }
 
     /** Landscape: keys and touchpad side by side. */
@@ -262,6 +301,8 @@ class InputActivity : HidActivity() {
         )
         InputMode.KEYBOARD_FULL -> keyboard(KeyboardLayouts.FULL)
         InputMode.PRESENTATION -> presentationRemote(portrait = false)
+        InputMode.AIR_MOUSE -> airMouseScreen(portrait = false)
+        InputMode.TYPE_TEXT -> typeScreen(portrait = false)
     }
 
     /** Portrait: touchpad above the keys, media keys as their own row. */
@@ -284,6 +325,8 @@ class InputActivity : HidActivity() {
             ) to 1f,
         )
         InputMode.PRESENTATION -> presentationRemote(portrait = true)
+        InputMode.AIR_MOUSE -> airMouseScreen(portrait = true)
+        InputMode.TYPE_TEXT -> typeScreen(portrait = true)
     }
 
     /**
@@ -595,8 +638,22 @@ class InputActivity : HidActivity() {
         }
     }
 
-    /** In presentation mode the phone's volume keys change slides. */
+    /** Presentation remote: the volume keys change slides. Air mouse: they are the mouse buttons. */
     override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
+        if (mode == InputMode.AIR_MOUSE) {
+            val mask = when (keyCode) {
+                KeyEvent.KEYCODE_VOLUME_DOWN -> BluetoothHidService.MOUSE_LEFT
+                KeyEvent.KEYCODE_VOLUME_UP -> BluetoothHidService.MOUSE_RIGHT
+                else -> 0
+            }
+            if (mask != 0) {
+                if (event.repeatCount == 0) {
+                    haptics.performButtonClickHaptic()
+                    hidService.setMouseButton(mask, true)
+                }
+                return true
+            }
+        }
         if (mode == InputMode.PRESENTATION && settings.volumeKeysForSlides) {
             when (keyCode) {
                 KeyEvent.KEYCODE_VOLUME_DOWN -> {
@@ -613,10 +670,417 @@ class InputActivity : HidActivity() {
     }
 
     override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean {
+        if (mode == InputMode.AIR_MOUSE) {
+            val mask = when (keyCode) {
+                KeyEvent.KEYCODE_VOLUME_DOWN -> BluetoothHidService.MOUSE_LEFT
+                KeyEvent.KEYCODE_VOLUME_UP -> BluetoothHidService.MOUSE_RIGHT
+                else -> 0
+            }
+            if (mask != 0) {
+                hidService.setMouseButton(mask, false)
+                afterMouseClick()
+                return true
+            }
+        }
         if (mode == InputMode.PRESENTATION && settings.volumeKeysForSlides &&
             (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN || keyCode == KeyEvent.KEYCODE_VOLUME_UP)
         ) return true
         return super.onKeyUp(keyCode, event)
+    }
+
+    // ------------------------------------------------------------------
+    // Air mouse
+    // ------------------------------------------------------------------
+
+    private fun startAirMouse() {
+        val air = airMouse ?: return
+        if (!air.start()) {
+            renderAirPad(false)
+            return
+        }
+        air.active = airAlwaysOn
+    }
+
+    private fun airMouseScreen(portrait: Boolean): View {
+        val prefs = getSharedPreferences("air_mouse", MODE_PRIVATE)
+        airAlwaysOn = prefs.getBoolean("always_on", false)
+        val air = AirMouse(this) { dx, dy -> hidService.moveMouse(dx, dy) }.apply { speed = prefs.getFloat("speed", 1f) }
+        airMouse = air
+
+        val pad = TextView(this, null, 0, R.style.Cockpit_Mono).apply {
+            gravity = Gravity.CENTER
+            textSize = 13f
+            letterSpacing = 0.1f
+            setTypeface(typeface, Typeface.BOLD)
+            setLineSpacing(0f, 1.3f)
+        }
+        airPad = pad
+        renderAirPad(false)
+        bindAirPad(pad, air)
+
+        val buttons = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            addView(mouseButton("LEFT", BluetoothHidService.MOUSE_LEFT), LinearLayout.LayoutParams(0, MATCH, 1.3f))
+            addView(mouseButton("MID", BluetoothHidService.MOUSE_MIDDLE), LinearLayout.LayoutParams(0, MATCH, 0.6f).apply {
+                marginStart = dp(6); marginEnd = dp(6)
+            })
+            addView(mouseButton("RIGHT", BluetoothHidService.MOUSE_RIGHT), LinearLayout.LayoutParams(0, MATCH, 1.3f))
+        }
+        val scroll = scrollStrip()
+
+        val options = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            addView(SwitchMaterial(context).apply {
+                text = "Always on (no need to hold the pad)"
+                textSize = 13f
+                isChecked = airAlwaysOn
+                setTextColor(color(R.color.slate_300))
+                setOnCheckedChangeListener { _, checked ->
+                    click()
+                    airAlwaysOn = checked
+                    prefs.edit().putBoolean("always_on", checked).apply()
+                    air.active = checked
+                    renderAirPad(checked)
+                }
+            })
+            val speedLabel = TextView(context, null, 0, R.style.Cockpit_Mono).apply {
+                textSize = 11f
+                setTextColor(color(R.color.slate_400))
+                text = String.format(Locale.US, "POINTER SPEED %.1fx", air.speed)
+            }
+            addView(speedLabel, LinearLayout.LayoutParams(MATCH, WRAP).apply { topMargin = dp(4) })
+            addView(SeekBar(context).apply {
+                max = 27
+                progress = ((air.speed - 0.3f) * 10).toInt().coerceIn(0, 27)
+                setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                    override fun onProgressChanged(sb: SeekBar?, p: Int, fromUser: Boolean) {
+                        air.speed = 0.3f + p / 10f
+                        speedLabel.text = String.format(Locale.US, "POINTER SPEED %.1fx", air.speed)
+                        prefs.edit().putFloat("speed", air.speed).apply()
+                    }
+                    override fun onStartTrackingTouch(sb: SeekBar?) = Unit
+                    override fun onStopTrackingTouch(sb: SeekBar?) = Unit
+                })
+            })
+            addView(TextView(context, null, 0, R.style.Cockpit_Mono).apply {
+                text = "Volume ▼ = left button (hold to drag) · Volume ▲ = right click"
+                textSize = 10f
+                setTextColor(color(R.color.slate_500))
+            }, LinearLayout.LayoutParams(MATCH, WRAP).apply { topMargin = dp(2) })
+        }
+
+        if (portrait) {
+            return LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                addView(pad, LinearLayout.LayoutParams(MATCH, 0, 1f))
+                addView(buttons, LinearLayout.LayoutParams(MATCH, dp(64)).apply { topMargin = dp(10) })
+                addView(scroll, LinearLayout.LayoutParams(MATCH, dp(56)).apply { topMargin = dp(8) })
+                addView(options, LinearLayout.LayoutParams(MATCH, WRAP).apply { topMargin = dp(8) })
+            }
+        }
+        val side = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            addView(buttons, LinearLayout.LayoutParams(MATCH, 0, 1f))
+            addView(scroll, LinearLayout.LayoutParams(MATCH, dp(52)).apply { topMargin = dp(8) })
+            addView(options, LinearLayout.LayoutParams(MATCH, WRAP).apply { topMargin = dp(6) })
+        }
+        return row(pad to 1.3f, side to 1f)
+    }
+
+    /**
+     * Hold the pad to move the pointer (unless always on). A short tap clicks; motion starts only
+     * after a brief hold so a tap doesn't nudge the pointer off its target.
+     */
+    @SuppressLint("ClickableViewAccessibility")
+    private fun bindAirPad(pad: View, air: AirMouse) {
+        var downAt = 0L
+        var downX = 0f
+        var downY = 0f
+        var moved = false
+        val slop = ViewConfiguration.get(this).scaledTouchSlop
+        val activate = Runnable { air.active = true }
+        pad.setOnTouchListener { _, e ->
+            when (e.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    downAt = SystemClock.uptimeMillis()
+                    downX = e.x
+                    downY = e.y
+                    moved = false
+                    renderAirPad(true)
+                    if (!airAlwaysOn) handler.postDelayed(activate, 120)
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    if (Math.hypot((e.x - downX).toDouble(), (e.y - downY).toDouble()) > slop) moved = true
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    handler.removeCallbacks(activate)
+                    if (!airAlwaysOn) air.active = false
+                    renderAirPad(airAlwaysOn)
+                    val tap = e.actionMasked == MotionEvent.ACTION_UP && !moved && SystemClock.uptimeMillis() - downAt < 220
+                    if (tap) {
+                        haptics.performButtonClickHaptic()
+                        hidService.clickMouse(BluetoothHidService.MOUSE_LEFT)
+                        afterMouseClick()
+                    }
+                }
+            }
+            true
+        }
+    }
+
+    private fun renderAirPad(active: Boolean) {
+        val pad = airPad ?: return
+        val accent = color(mode.accent)
+        pad.text = when {
+            airMouse?.available == false -> "NO GYROSCOPE\nAir mouse needs a gyroscope sensor"
+            airAlwaysOn -> "POINTING\nmove the phone · tap to click"
+            active -> "POINTING…"
+            else -> "HOLD TO POINT\npoint the phone at the screen\ntap to click"
+        }
+        pad.setTextColor(if (active) accent else color(R.color.slate_400))
+        pad.background = GradientDrawable().apply {
+            cornerRadius = dp(18).toFloat()
+            setColor(if (active) Color.argb(40, Color.red(accent), Color.green(accent), Color.blue(accent)) else color(R.color.panel_bg))
+            setStroke(dp(if (active) 2 else 1), if (active) accent else color(R.color.border))
+        }
+    }
+
+    /** Drag up / down to scroll the PC (follows the natural scrolling setting). */
+    @SuppressLint("ClickableViewAccessibility")
+    private fun scrollStrip(): TextView = TextView(this, null, 0, R.style.Cockpit_Mono).apply {
+        text = "↕  DRAG TO SCROLL"
+        gravity = Gravity.CENTER
+        textSize = 11f
+        setTypeface(typeface, Typeface.BOLD)
+        setTextColor(color(R.color.slate_400))
+        setBackgroundResource(R.drawable.bg_step_button)
+        var lastY = 0f
+        var rest = 0f
+        setOnTouchListener { v, e ->
+            when (e.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    v.isPressed = true
+                    lastY = e.y
+                    rest = 0f
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    rest += (e.y - lastY) / dp(14) * settings.scrollSpeed
+                    lastY = e.y
+                    val ticks = rest.toInt()
+                    if (ticks != 0) {
+                        rest -= ticks
+                        hidService.scrollMouse(if (settings.naturalScroll) ticks else -ticks, 0)
+                    }
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> v.isPressed = false
+            }
+            true
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // Type on PC
+    // ------------------------------------------------------------------
+
+    private fun typeScreen(portrait: Boolean): View {
+        val prefs = getSharedPreferences("type_on_pc", MODE_PRIVATE)
+        var speed = runCatching { TypeSpeed.valueOf(prefs.getString("speed", null)!!) }.getOrDefault(TypeSpeed.NORMAL)
+        var delay = prefs.getInt("delay", 3)
+
+        // Rotating rebuilds the screen: keep what was typed
+        val previous = typeInput?.text?.toString().orEmpty()
+        val input = EditText(this).apply {
+            setText(previous)
+            hint = "Paste or type the text to type on the PC"
+            gravity = Gravity.TOP or Gravity.START
+            textSize = 15f
+            setTextColor(Color.WHITE)
+            setHintTextColor(color(R.color.slate_500))
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
+            importantForAutofill = View.IMPORTANT_FOR_AUTOFILL_NO
+            setPadding(dp(14), dp(12), dp(14), dp(12))
+            background = GradientDrawable().apply {
+                cornerRadius = dp(14).toFloat()
+                setColor(color(R.color.panel_bg))
+                setStroke(dp(1), color(R.color.border))
+            }
+            addTextChangedListener(object : TextWatcher {
+                override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) = Unit
+                override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) = Unit
+                override fun afterTextChanged(s: Editable?) = renderTyping()
+            })
+        }
+        typeInput = input
+        typeInfo = TextView(this, null, 0, R.style.Cockpit_Mono).apply {
+            textSize = 11f
+            setTextColor(color(R.color.slate_400))
+        }
+
+        val delays = listOf(0, 3, 5, 10)
+        val speedRow = chipRow("SPEED", TypeSpeed.entries.map { it.label }, { speed.ordinal }) {
+            speed = TypeSpeed.entries[it]
+            prefs.edit().putString("speed", speed.name).apply()
+        }
+        val delayRow = chipRow("START AFTER", delays.map { if (it == 0) "NOW" else "${it}s" }, { delays.indexOf(delay).coerceAtLeast(0) }) {
+            delay = delays[it]
+            prefs.edit().putInt("delay", delay).apply()
+        }
+
+        val paste = tile("PASTE", R.drawable.ic_copy, R.color.cyan_400) {
+            val clip = getSystemService(ClipboardManager::class.java).primaryClip
+            val text = clip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.coerceToText(this)?.toString()
+            if (text.isNullOrEmpty()) {
+                Toast.makeText(this, "The clipboard is empty", Toast.LENGTH_SHORT).show()
+            } else {
+                val start = input.selectionStart.coerceAtLeast(0)
+                val end = input.selectionEnd.coerceAtLeast(0)
+                input.text.replace(minOf(start, end), maxOf(start, end), text)
+            }
+        }
+        val clear = tile("CLEAR", R.drawable.ic_eraser, R.color.slate_400) { input.setText("") }
+        val type = tile("TYPE ON PC", R.drawable.ic_keyboard, mode.accent) { onTypeButton(input.text.toString(), speed, delay) }
+            .apply { primary = true }
+        typeButton = type
+        val buttons = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            addView(paste, LinearLayout.LayoutParams(0, MATCH, 1f))
+            addView(clear, LinearLayout.LayoutParams(0, MATCH, 1f).apply { marginStart = dp(8) })
+            addView(type, LinearLayout.LayoutParams(0, MATCH, 1.6f).apply { marginStart = dp(8) })
+        }
+        val note = TextView(this, null, 0, R.style.Cockpit_Mono).apply {
+            text = "Click into a text box on the PC first. The PC's keyboard layout must be English (US)."
+            textSize = 10f
+            setTextColor(color(R.color.slate_500))
+        }
+        renderTyping()
+
+        val controls = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            addView(typeInfo, LinearLayout.LayoutParams(MATCH, WRAP))
+            addView(speedRow, LinearLayout.LayoutParams(MATCH, WRAP).apply { topMargin = dp(8) })
+            addView(delayRow, LinearLayout.LayoutParams(MATCH, WRAP).apply { topMargin = dp(6) })
+            addView(buttons, LinearLayout.LayoutParams(MATCH, dp(64)).apply { topMargin = dp(10) })
+            addView(note, LinearLayout.LayoutParams(MATCH, WRAP).apply { topMargin = dp(6) })
+        }
+        if (portrait) {
+            return LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                addView(input, LinearLayout.LayoutParams(MATCH, 0, 1f))
+                addView(controls, LinearLayout.LayoutParams(MATCH, WRAP).apply { topMargin = dp(10) })
+            }
+        }
+        return row(input to 1.2f, controls to 1f)
+    }
+
+    /** "LABEL  [A] [B] [C]" single-choice chips. */
+    private fun chipRow(label: String, options: List<String>, selected: () -> Int, onPick: (Int) -> Unit): LinearLayout =
+        LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            addView(TextView(context, null, 0, R.style.Cockpit_Mono).apply {
+                text = label
+                textSize = 10f
+                letterSpacing = 0.12f
+                setTextColor(color(R.color.slate_500))
+            }, LinearLayout.LayoutParams(dp(84), WRAP))
+            val chips = options.map { option ->
+                TextView(context, null, 0, R.style.Cockpit_Mono).apply {
+                    text = option
+                    textSize = 11f
+                    gravity = Gravity.CENTER
+                    setTypeface(typeface, Typeface.BOLD)
+                }
+            }
+            fun render() = chips.forEachIndexed { i, chip ->
+                val on = i == selected()
+                chip.setTextColor(if (on) color(R.color.cockpit_bg) else color(R.color.slate_300))
+                chip.background = GradientDrawable().apply {
+                    cornerRadius = dp(10).toFloat()
+                    setColor(if (on) color(mode.accent) else color(R.color.step_bg))
+                }
+            }
+            chips.forEachIndexed { i, chip ->
+                chip.setOnClickListener { click(); onPick(i); render() }
+                addView(chip, LinearLayout.LayoutParams(0, dp(32), 1f).apply { if (i > 0) marginStart = dp(6) })
+            }
+            render()
+        }
+
+    private val countdown = object : Runnable {
+        override fun run() {
+            if (countdownLeft <= 0) return
+            countdownLeft--
+            if (countdownLeft == 0) startTyping() else handler.postDelayed(this, 1000)
+            renderTyping()
+        }
+    }
+
+    private fun onTypeButton(text: String, speed: TypeSpeed, delay: Int) {
+        // Second tap: stop the countdown or the typing
+        if (countdownLeft > 0 || typingJob != null) {
+            handler.removeCallbacks(countdown)
+            countdownLeft = 0
+            typingJob?.cancel()
+            renderTyping()
+            return
+        }
+        if (text.isEmpty()) {
+            Toast.makeText(this, "Type or paste some text first", Toast.LENGTH_SHORT).show()
+            return
+        }
+        if (hidService.connectionState != ConnectionState.CONNECTED) {
+            Toast.makeText(this, "Connect to the PC first", Toast.LENGTH_SHORT).show()
+            openBluetoothDialog()
+            return
+        }
+        pendingText = text
+        pendingSpeed = speed
+        if (delay <= 0) {
+            startTyping()
+        } else {
+            countdownLeft = delay
+            handler.postDelayed(countdown, 1000)
+        }
+        renderTyping()
+    }
+
+    private fun startTyping() {
+        typedCount = 0
+        typingJob = hidService.typeTextJob(
+            pendingText, pendingSpeed.keyMs,
+            onProgress = { typed, _ -> runOnUiThread { typedCount = typed; renderTyping() } },
+            onDone = { completed ->
+                runOnUiThread {
+                    typingJob = null
+                    renderTyping()
+                    Toast.makeText(this, if (completed) "Typed on the PC" else "Typing stopped", Toast.LENGTH_SHORT).show()
+                }
+            },
+        )
+        renderTyping()
+    }
+
+    private fun renderTyping() {
+        val info = typeInfo ?: return
+        val text = typeInput?.text?.toString().orEmpty()
+        val job = typingJob
+        info.text = when {
+            job != null -> "TYPING $typedCount / ${job.total}…"
+            countdownLeft > 0 -> "STARTING IN $countdownLeft s · click into the text box on the PC"
+            text.isEmpty() -> "NOTHING TO TYPE YET"
+            else -> {
+                val skipped = hidService.untypeable(text)
+                "${text.length} CHARACTERS" + if (skipped > 0) " · $skipped CAN'T BE TYPED (NOT ON A US KEYBOARD)" else ""
+            }
+        }
+        val busy = job != null || countdownLeft > 0
+        info.setTextColor(color(if (busy) mode.accent else R.color.slate_400))
+        typeButton?.apply {
+            title = if (busy) "STOP" else "TYPE ON PC"
+            setIcon(if (busy) R.drawable.ic_stop else R.drawable.ic_keyboard)
+            accentColor = color(if (busy) R.color.red_400 else mode.accent)
+            isActive = busy
+        }
     }
 
     // ------------------------------------------------------------------

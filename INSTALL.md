@@ -107,10 +107,10 @@ with a phone full of colourful tool tiles in front.
 2. The home screen lists every tool in four categories:
    - **Game control**: *ETS2 Truck Controller*
    - **Keyboard & mouse**: *Keyboard + Touchpad*, *Keyboard*, *Num Pad + Touchpad*,
-     *Keyboard Complete* and *Presentation Remote*
+     *Keyboard Complete*, *Presentation Remote*, *Air Mouse* and *Type on PC*
    - **Phone tools**: *Device Info*, *Battery Info*, *Charging Meter*, *Storage Analyzer*,
      *Sensor Tester* and *Screen Time*
-   - **Utilities**: *Speedometer*, *Night Screen*, *File Transfer*, *Scanner* and *QR & Barcode Maker*
+   - **Utilities**: *Speedometer*, *Night Screen*, *File Transfer*, *Live View*, *Scanner* and *QR & Barcode Maker*
 3. Use the **search box** at the top to find a tool by name or by what it does (for example
    "fingerprint", "wifi" or "trip").
 4. The button at the top right switches **fullscreen** on or off for every screen.
@@ -238,7 +238,7 @@ phone, except files you transfer to a PC on your own network with File Transfer.
 |---|---|
 | Nearby devices (Bluetooth) | PC tools, Bluetooth test |
 | Location | Speedometer, GPS / Wi-Fi / Bluetooth tests (Android requires it to read satellites and nearby networks) |
-| Camera | Scanner, camera test |
+| Camera | Scanner, camera test, File Transfer live view |
 | Microphone | Microphone test (recordings stay in memory and are never saved) |
 | Phone | Mobile network test (network type and SIM status only) |
 | Physical activity | Step counter sensor test |

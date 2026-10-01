@@ -7,8 +7,11 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.ClipData
 import android.content.ClipboardManager
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
+import android.media.projection.MediaProjectionManager
 import android.net.wifi.WifiManager
 import android.os.Build
 import android.os.Handler
@@ -19,6 +22,8 @@ import android.os.SystemClock
 import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
+import androidx.core.content.ContextCompat
+import androidx.core.content.IntentCompat
 import com.truckcontroller.pro.FileTransferActivity
 import com.truckcontroller.pro.R
 import com.truckcontroller.pro.formatBytes
@@ -42,6 +47,13 @@ class FileTransferService : Service() {
         private const val ACTION_ACCEPT = "com.truckcontroller.pro.transfer.ACCEPT"
         private const val ACTION_DECLINE = "com.truckcontroller.pro.transfer.DECLINE"
         private const val ACTION_COPY = "com.truckcontroller.pro.transfer.COPY"
+        const val ACTION_CAMERA_START = "com.truckcontroller.pro.transfer.CAMERA_START"
+        const val ACTION_CAMERA_STOP = "com.truckcontroller.pro.transfer.CAMERA_STOP"
+        const val ACTION_SCREEN_START = "com.truckcontroller.pro.transfer.SCREEN_START"
+        const val ACTION_SCREEN_STOP = "com.truckcontroller.pro.transfer.SCREEN_STOP"
+        private const val ACTION_LIVE_STOP = "com.truckcontroller.pro.transfer.LIVE_STOP"
+        const val EXTRA_RESULT_CODE = "result_code"
+        const val EXTRA_RESULT_DATA = "result_data"
         private const val EXTRA_ID = "id"
 
         private const val CHANNEL_ID = "file_transfer"
@@ -52,6 +64,8 @@ class FileTransferService : Service() {
 
     private var server: TransferServer? = null
     private var hub: Hub? = null
+    private var cameraShare: CameraShare? = null
+    private var screenShare: ScreenShare? = null
     private var wakeLock: PowerManager.WakeLock? = null
     private var wifiLock: WifiManager.WifiLock? = null
     private val handler = Handler(Looper.getMainLooper())
@@ -98,18 +112,133 @@ class FileTransferService : Service() {
                 if (server == null) stopSelf() else handleAction(intent)
                 return START_NOT_STICKY
             }
+            ACTION_CAMERA_START, ACTION_CAMERA_STOP, ACTION_SCREEN_START, ACTION_SCREEN_STOP, ACTION_LIVE_STOP -> {
+                if (server == null) {
+                    stopSelf()
+                    return START_NOT_STICKY
+                }
+                when (intent.action) {
+                    ACTION_CAMERA_START -> startCamera()
+                    ACTION_CAMERA_STOP -> stopCamera()
+                    ACTION_SCREEN_START -> startScreen(intent)
+                    ACTION_SCREEN_STOP -> stopScreen()
+                    ACTION_LIVE_STOP -> {
+                        stopCamera()
+                        stopScreen()
+                    }
+                }
+                return START_NOT_STICKY
+            }
         }
-        ServiceCompat.startForeground(
-            this, NOTIFICATION_ID, buildNotification(),
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE else 0
-        )
+        updateForeground()
         if (server == null) startServer()
         return START_NOT_STICKY
+    }
+
+    /** Foreground types follow what runs: network always, plus camera / screen capture while shared. */
+    private fun updateForeground() {
+        var types = 0
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            types = ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE
+            if (screenShare != null || pendingScreen) types = types or ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
+            if (cameraShare != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                types = types or ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA
+            }
+        }
+        ServiceCompat.startForeground(this, NOTIFICATION_ID, buildNotification(), types)
+    }
+
+    // ------------------------------------------------------------------
+    // Live view: camera and screen
+    // ------------------------------------------------------------------
+
+    private fun startCamera() {
+        if (cameraShare != null) return
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) return
+        val share = CameraShare(this, LiveShare.quality(this)) { error ->
+            handler.post {
+                Toast.makeText(this, error, Toast.LENGTH_LONG).show()
+                stopCamera()
+            }
+        }
+        cameraShare = share
+        // The camera type must be in place before the camera opens
+        runCatching { updateForeground() }.onFailure {
+            cameraShare = null
+            Toast.makeText(this, "Android didn't allow the camera in the background", Toast.LENGTH_LONG).show()
+            return
+        }
+        share.start()
+        FileTransfer.log("Camera sharing started")
+    }
+
+    private fun stopCamera() {
+        val share = cameraShare ?: return
+        cameraShare = null
+        share.stop()
+        FileTransfer.log("Camera sharing stopped")
+        if (server != null) updateForeground()
+    }
+
+    private fun startScreen(intent: Intent) {
+        if (screenShare != null) return
+        val code = intent.getIntExtra(EXTRA_RESULT_CODE, 0)
+        val data = IntentCompat.getParcelableExtra(intent, EXTRA_RESULT_DATA, Intent::class.java) ?: return
+        val manager = getSystemService(MediaProjectionManager::class.java)
+        // Android 14+: the service must already run as screen capture before getting the projection
+        pendingScreen = true
+        val projection = runCatching {
+            updateForeground()
+            manager.getMediaProjection(code, data)
+        }.getOrNull()
+        pendingScreen = false
+        if (projection == null) {
+            Toast.makeText(this, "Screen sharing wasn't allowed", Toast.LENGTH_LONG).show()
+            updateForeground()
+            return
+        }
+        val share = ScreenShare(this, projection, LiveShare.quality(this)) { handler.post { stopScreen() } }
+        screenShare = share
+        runCatching { share.start() }.onFailure {
+            screenShare = null
+            share.stop()
+            Toast.makeText(this, "Couldn't capture the screen: ${it.message}", Toast.LENGTH_LONG).show()
+            updateForeground()
+            return
+        }
+        FileTransfer.log("Screen sharing started")
+    }
+
+    /** True while switching the service to screen-capture type, before the projection exists. */
+    private var pendingScreen = false
+
+    private fun stopScreen() {
+        val share = screenShare ?: return
+        screenShare = null
+        share.stop()
+        FileTransfer.log("Screen sharing stopped")
+        if (server != null) updateForeground()
+    }
+
+    private fun onLiveControl(source: String, action: String) {
+        val camera = cameraShare ?: return
+        if (source != "camera") return
+        when (action) {
+            "lens" -> camera.switchLens()
+            "torch" -> camera.toggleTorch()
+            "rotate" -> camera.rotate()
+        }
     }
 
     override fun onDestroy() {
         super.onDestroy()
         handler.removeCallbacks(ticker)
+        cameraShare?.stop()
+        cameraShare = null
+        screenShare?.stop()
+        screenShare = null
+        LiveShare.control = null
+        LiveShare.onChanged = null
         val s = server
         val h = hub
         server = null
@@ -133,6 +262,11 @@ class FileTransferService : Service() {
             return
         }
         val h = Hub(applicationContext).also { it.listener = hubListener }
+        LiveShare.onChanged = {
+            h.broadcast(LiveShare.statusJson())
+            handler.post { updateNotification() }
+        }
+        LiveShare.control = { source, action -> handler.post { onLiveControl(source, action) } }
         val s = TransferServer(applicationContext, h)
         hub = h
         server = s
@@ -323,7 +457,8 @@ class FileTransferService : Service() {
         // Only re-post when something changed: avoids flicker and rate limits
         val text = notification.extras.getCharSequence(Notification.EXTRA_TITLE).toString() +
             notification.extras.getCharSequence(Notification.EXTRA_TEXT).toString() +
-            notification.extras.getInt(Notification.EXTRA_PROGRESS)
+            notification.extras.getInt(Notification.EXTRA_PROGRESS) +
+            notification.extras.getCharSequence(Notification.EXTRA_SUB_TEXT)
         if (text == lastText) return
         lastText = text
         getSystemService(NotificationManager::class.java).notify(NOTIFICATION_ID, notification)
@@ -369,6 +504,15 @@ class FileTransferService : Service() {
             }
             builder.setContentTitle("File Transfer on · $devices")
                 .setContentText("Open ${address.url(FileTransfer.port)} on your PC")
+        }
+        if (LiveShare.sharing) {
+            val what = listOfNotNull("camera".takeIf { LiveShare.camera.on }, "screen".takeIf { LiveShare.screen.on }).joinToString(" and ")
+            val watching = LiveShare.camera.viewerCount + LiveShare.screen.viewerCount
+            builder.setSubText("Sharing $what · $watching watching")
+            builder.addAction(R.drawable.ic_eye, "Stop sharing", PendingIntent.getService(
+                this, 2, Intent(this, FileTransferService::class.java).setAction(ACTION_LIVE_STOP),
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            ))
         }
         return builder.build()
     }

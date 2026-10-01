@@ -292,6 +292,25 @@ nav.side { position: sticky; top: 76px; align-self: start; display: flex; flex-d
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
 .toast.err { background: var(--danger); color: #fff; }
 
+/* Live view */
+.live { padding: 16px 20px 24px; max-width: 1400px; margin: 0 auto; }
+.live-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.live-bar .grow { flex: 1; min-width: 120px; }
+.seg { display: flex; gap: 4px; padding: 4px; border-radius: 12px; background: var(--panel-2); border: 1px solid var(--border); }
+.seg button { height: 32px; border: 0; background: transparent; color: var(--muted); }
+.seg button.on { background: var(--panel); color: var(--text); font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,.2); }
+.seg button .dot { width: 7px; height: 7px; border-radius: 50%; background: #EF4444; }
+#liveTorch.on { background: var(--warn); border-color: var(--warn); color: #111; }
+.live-stage { position: relative; background: #000; border-radius: 16px; overflow: hidden; height: calc(100vh - 170px); min-height: 280px; display: grid; place-items: center; }
+/* Pinned to the stage box: a percentage height inside the grid row would follow the picture
+   instead, and the overflow got cut off. Contain = whole picture, black bars as needed. */
+.live-stage img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+.live-stage:fullscreen { border-radius: 0; height: 100vh; }
+.live-empty { color: #94A3B8; text-align: center; padding: 24px; max-width: 440px; display: grid; justify-items: center; gap: 6px; }
+.live-empty .ic { width: 40px; height: 40px; stroke-width: 1.5; }
+.live-empty b { color: #F1F5F9; font-size: 16px; }
+.live-badge { font-size: 10px; font-weight: 800; letter-spacing: .06em; color: #fff; background: #EF4444; border-radius: 6px; padding: 1px 5px; }
+
 @media (max-width: 900px) {
   .send { grid-template-columns: minmax(0, 1fr); padding: 14px 16px 80px; }
 }
@@ -302,7 +321,10 @@ nav.side { position: sticky; top: 76px; align-self: start; display: flex; flex-d
   nav.side { position: static; flex-direction: row; overflow-x: auto; scrollbar-width: none; gap: 6px; }
   .side-label, .storage { display: none; }
   .place { flex: none; border: 1px solid var(--border); background: var(--panel); height: 34px; }
-  .file-actions .label { display: none; }
+  .file-actions .label, .live-bar .label { display: none; }
+  .live-bar button:not(.seg button) { width: 36px; padding: 0; }
+  .live { padding: 12px 16px 16px; }
+  .live-stage { height: calc(100vh - 200px); }
   .file-actions button { width: 36px; padding: 0; }
   .selbar { top: 110px; }
   .items.grid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; }
@@ -354,6 +376,11 @@ nav.side { position: sticky; top: 76px; align-self: start; display: flex; flex-d
   <symbol id="i-copy" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></symbol>
   <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></symbol>
   <symbol id="i-logout" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.06 12.35a1 1 0 0 1 0-.7 10.75 10.75 0 0 1 19.88 0 1 1 0 0 1 0 .7 10.75 10.75 0 0 1-19.88 0"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-switch" viewBox="0 0 24 24"><path d="M11 19H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h5M13 5h7a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-5"/><circle cx="12" cy="12" r="3"/><path d="m18 22-3-3 3-3M6 2l3 3-3 3"/></symbol>
+  <symbol id="i-flash" viewBox="0 0 24 24"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/></symbol>
+  <symbol id="i-rotate" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8M21 3v5h-5"/></symbol>
+  <symbol id="i-expand" viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/></symbol>
 </svg>
 
 <!-- Connect: ask the phone for access (or use the PIN) -->
@@ -398,6 +425,7 @@ nav.side { position: sticky; top: 76px; align-self: start; display: flex; flex-d
     <nav class="tabs" aria-label="Sections">
       <button data-tab="send" class="on"><svg class="ic sm"><use href="#i-send"/></svg>Send<span id="inboxBadge" class="badge" hidden></span></button>
       <button data-tab="files" id="tabFilesBtn"><svg class="ic sm"><use href="#i-phone"/></svg>Phone files</button>
+      <button data-tab="live" id="tabLiveBtn"><svg class="ic sm"><use href="#i-eye"/></svg>Live<span id="liveBadge" class="live-badge" hidden>LIVE</span></button>
     </nav>
     <div class="me">
       <button id="meChip" class="chip" title="Rename this device"><svg class="ic sm"><use href="#i-monitor"/></svg><span class="name" id="meName"></span><span class="lvl" id="meAccess"></span></button>
@@ -445,6 +473,30 @@ nav.side { position: sticky; top: 76px; align-self: start; display: flex; flex-d
         <h3><svg class="ic sm"><use href="#i-inbox"/></svg>Activity</h3>
         <div id="feed" class="feed"></div>
         <p id="feedEmpty" class="muted">Files and text you send or receive appear here. Keep this tab open to receive.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Live view: phone camera / screen -->
+  <section id="tabLive" class="live" hidden>
+    <div class="live-bar">
+      <div class="seg">
+        <button id="srcCamera" type="button"><svg class="ic sm"><use href="#i-camera"/></svg>Camera</button>
+        <button id="srcScreen" type="button"><svg class="ic sm"><use href="#i-phone"/></svg>Screen</button>
+      </div>
+      <span id="liveInfo" class="muted grow"></span>
+      <button id="liveLens" type="button" title="Switch between back and front camera"><svg class="ic"><use href="#i-switch"/></svg><span class="label">Switch</span></button>
+      <button id="liveTorch" type="button" title="Phone light"><svg class="ic"><use href="#i-flash"/></svg><span class="label">Light</span></button>
+      <button id="liveRotate" type="button" title="Rotate the picture"><svg class="ic"><use href="#i-rotate"/></svg><span class="label">Rotate</span></button>
+      <button id="liveSnap" type="button" title="Save a photo"><svg class="ic"><use href="#i-download"/></svg><span class="label">Snapshot</span></button>
+      <button id="liveFull" type="button" class="icon" title="Full screen"><svg class="ic"><use href="#i-expand"/></svg></button>
+    </div>
+    <div id="liveStage" class="live-stage">
+      <img id="liveImg" alt="Live picture from the phone" hidden>
+      <div id="liveEmpty" class="live-empty">
+        <svg class="ic"><use href="#i-eye"/></svg>
+        <b id="liveEmptyTitle">Nothing is being shared</b>
+        <span id="liveEmptyText">On the phone open PhoneDeck › File Transfer › Live view and tap Share camera or Share screen.</span>
       </div>
     </div>
   </section>
@@ -694,6 +746,8 @@ const S = {
   // Send
   devices: [], targets: new Set(), picked: [], shares: new Map(), texts: new Map(),
   outgoing: new Map(), uploading: new Set(), accepted: new Set(), downloaded: new Set(),
+  // Live view
+  live: null, liveSrc: null, streaming: null,
   // Phone files
   dir: null, items: [], shown: [], sel: new Set(), anchor: -1,
   view: store.get('view', 'grid'), sort: store.get('sort', 'name'), hidden: store.get('hidden', '0') === '1', filter: '',
@@ -712,6 +766,8 @@ let waitId = null;
 
 async function showConnect(message) {
   if (S.es) { S.es.close(); S.es = null; }
+  S.streaming = null;
+  $('#liveImg').removeAttribute('src');
   $('#app').hidden = true;
   $('#viewer').hidden = true;
   $('#connect').hidden = false;
@@ -914,6 +970,10 @@ function onEvent(m) {
       renderFeed();
       break;
     }
+    case 'live':
+      S.live = m;
+      renderLive();
+      break;
     case 'kicked':
       if (S.es) { S.es.close(); S.es = null; }
       signedOut('The phone disconnected this browser.');
@@ -939,6 +999,8 @@ function route() {
     try { path = decodeURIComponent(hash.slice(6)); } catch (e) { path = ''; }
     showTab('files');
     load(path || (S.dir ? S.dir.path : S.roots[0].path));
+  } else if (hash === 'live') {
+    showTab('live');
   } else {
     showTab('send');
   }
@@ -948,13 +1010,15 @@ function showTab(tab) {
   S.tab = tab;
   $('#tabSend').hidden = tab !== 'send';
   $('#tabFiles').hidden = tab !== 'files';
+  $('#tabLive').hidden = tab !== 'live';
   document.querySelectorAll('.tabs button').forEach((b) => b.classList.toggle('on', b.dataset.tab === tab));
   $('#queue').hidden = tab !== 'files' || !Q.jobs.some((j) => j.status !== 'cancel');
   updateTitle();
+  renderLive();
 }
 
 document.querySelectorAll('.tabs button').forEach((b) => {
-  b.onclick = () => navigate(b.dataset.tab === 'files' ? 'files:' + (S.dir ? enc(S.dir.path) : '') : 'send');
+  b.onclick = () => navigate(b.dataset.tab === 'files' ? 'files:' + (S.dir ? enc(S.dir.path) : '') : b.dataset.tab);
 });
 
 function updateTitle() {
@@ -1298,6 +1362,89 @@ function textCard(t) {
   card.appendChild(actions);
   return card;
 }
+
+// ---------------------------------------------------------------------------
+// Live view: the phone's camera or screen (MJPEG in an <img>)
+// ---------------------------------------------------------------------------
+
+function renderLive() {
+  const st = S.live;
+  if (!st || !S.me) return;
+  const cam = st.camera;
+  const scr = st.screen;
+  $('#liveBadge').hidden = !(cam.on || scr.on);
+  // Prefer what's being shared
+  if (!S.liveSrc || !st[S.liveSrc].on) S.liveSrc = cam.on ? 'camera' : scr.on ? 'screen' : (S.liveSrc || 'camera');
+  const src = st[S.liveSrc];
+  [['#srcCamera', 'camera', cam], ['#srcScreen', 'screen', scr]].forEach(([id, key, s]) => {
+    const b = $(id);
+    b.classList.toggle('on', S.liveSrc === key);
+    b.querySelectorAll('.dot').forEach((d) => d.remove());
+    if (s.on) { const dot = el('span', 'dot'); b.appendChild(dot); }
+  });
+
+  const isCamera = S.liveSrc === 'camera';
+  $('#liveLens').hidden = !(isCamera && cam.on);
+  $('#liveRotate').hidden = !(isCamera && cam.on);
+  $('#liveTorch').hidden = !(isCamera && cam.on && cam.hasTorch);
+  $('#liveTorch').classList.toggle('on', !!cam.torch);
+  $('#liveSnap').hidden = !src.on;
+  $('#liveFull').hidden = !src.on;
+
+  const watchers = src.viewers;
+  $('#liveInfo').textContent = !src.on ? '' :
+    (isCamera ? (cam.lens === 'front' ? 'Front camera' : 'Back camera') : 'Phone screen') +
+    (src.width ? ' · ' + src.width + '×' + src.height : '') +
+    ' · ' + watchers + (watchers === 1 ? ' watching' : ' watching');
+
+  $('#liveEmpty').hidden = src.on;
+  $('#liveEmptyTitle').textContent = (cam.on || scr.on)
+    ? 'The phone isn\'t sharing its ' + (isCamera ? 'camera' : 'screen')
+    : 'Nothing is being shared';
+  $('#liveEmptyText').textContent = (cam.on || scr.on)
+    ? 'Switch to ' + (isCamera ? 'Screen' : 'Camera') + ' above, or start it on the phone.'
+    : 'On the phone open PhoneDeck › File Transfer › Live view and tap Share camera or Share screen.';
+
+  // Stream only while this tab is showing, to save the phone's battery and Wi-Fi
+  const img = $('#liveImg');
+  const watch = S.tab === 'live' && !document.hidden && src.on;
+  img.hidden = !src.on;
+  if (watch && S.streaming !== S.liveSrc) {
+    S.streaming = S.liveSrc;
+    img.src = '/api/live/stream?src=' + S.liveSrc + '&t=' + Date.now();
+  } else if (!watch && S.streaming) {
+    S.streaming = null;
+    img.removeAttribute('src');
+  }
+}
+
+$('#liveImg').onerror = () => {
+  if (!S.streaming) return;
+  S.streaming = null;
+  setTimeout(renderLive, 2000);
+};
+
+$('#srcCamera').onclick = () => { S.liveSrc = 'camera'; S.streaming = null; renderLive(); };
+$('#srcScreen').onclick = () => { S.liveSrc = 'screen'; S.streaming = null; renderLive(); };
+
+async function liveControl(action) {
+  try { await post('/api/live/control?src=camera&action=' + action); } catch (e) { fail(e); }
+}
+$('#liveLens').onclick = () => liveControl('lens');
+$('#liveTorch').onclick = () => liveControl('torch');
+$('#liveRotate').onclick = () => liveControl('rotate');
+$('#liveSnap').onclick = () => {
+  const a = el('a');
+  a.href = '/api/live/snapshot?src=' + S.liveSrc + '&t=' + Date.now();
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+};
+$('#liveFull').onclick = () => {
+  const stage = $('#liveStage');
+  if (document.fullscreenElement) document.exitFullscreen();
+  else if (stage.requestFullscreen) stage.requestFullscreen();
+};
 
 // ---------------------------------------------------------------------------
 // Phone files: browse the folders this device may open
@@ -1962,6 +2109,7 @@ document.addEventListener('keydown', (e) => {
 
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden && S.dir && S.tab === 'files' && !$('#app').hidden) load(S.dir.path);
+  renderLive();
 });
 
 boot();

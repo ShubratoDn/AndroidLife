@@ -14,6 +14,10 @@ data class ControllerSettings(
     val soundEnabled: Boolean = true,
     val soundVolume: Int = 80,               // 0 to 100
     val shifterMode: ShifterMode = ShifterMode.SEQUENTIAL,
+    /** Steer by turning the phone instead of dragging the wheel. */
+    val tiltSteering: Boolean = false,
+    /** Phone rotation (degrees each way) that turns the wheel to full lock. */
+    val tiltRange: Int = 90,
 )
 
 /**
@@ -37,6 +41,8 @@ class SettingsStore(context: Context) {
             shifterMode = runCatching {
                 ShifterMode.valueOf(prefs.getString("shifterMode", null) ?: defaults.shifterMode.name)
             }.getOrDefault(defaults.shifterMode),
+            tiltSteering = prefs.getBoolean("tiltSteering", defaults.tiltSteering),
+            tiltRange = prefs.getInt("tiltRange", defaults.tiltRange),
         )
     }
 
@@ -51,6 +57,8 @@ class SettingsStore(context: Context) {
             .putBoolean("soundEnabled", settings.soundEnabled)
             .putInt("soundVolume", settings.soundVolume)
             .putString("shifterMode", settings.shifterMode.name)
+            .putBoolean("tiltSteering", settings.tiltSteering)
+            .putInt("tiltRange", settings.tiltRange)
             .apply()
     }
 }

@@ -39,7 +39,8 @@ Detailed instructions and troubleshooting: **[INSTALL.md](INSTALL.md)**.
 ## Tools
 
 ### Game control
-- **ETS2 Truck Controller**: steering wheel (360°–1800°, auto-centering, deadzone, response curve),
+- **ETS2 Truck Controller**: steering wheel (360°–1800°, auto-centering, deadzone, response curve,
+  or tilt steering: turn the whole phone like a wheel),
   analog gas and brake pedals, sequential shifter, retarder, cruise control, engine start, parking
   brake, cockpit switches (lights, beacon, hazards, blinkers, wipers, diff lock, lift axle, trailer,
   camera), look pad, horn, CB push-to-talk, truck sounds and haptics
@@ -52,6 +53,8 @@ Detailed instructions and troubleshooting: **[INSTALL.md](INSTALL.md)**.
 | **Num Pad + Touchpad** | Numeric keypad with Num Lock indicator and a large touchpad |
 | **Keyboard Complete** | Full 104-key layout: F-row, navigation cluster, arrows and numpad |
 | **Presentation Remote** | Next / previous slide, talk timer, start / end show, black screen, laser pointer, pointer pad; the phone's volume keys also change slides |
+| **Air Mouse** | Point the phone to move the PC pointer (gyroscope); hold the pad to aim, tap to click, scroll strip; volume keys are the mouse buttons |
+| **Type on PC** | Paste or type text on the phone and the PC types it out: passwords, codes, long text; adjustable speed and start delay |
 
 Touchpad gestures (tap, two-/three-finger tap, two-finger scroll, drag), sticky and lockable
 modifiers, Caps / Num Lock indicators that follow the PC, media keys, and portrait / landscape for
@@ -72,9 +75,10 @@ every mode with an adjustable keyboard height.
 |---|---|
 | **Speedometer** | GPS speed with trips (distance, time, max and average speed), saved trip history, and each trip's route on an OpenStreetMap map: live while driving, coloured by speed afterwards, exportable as GPX |
 | **Night Screen** | Dims the screen below the lowest brightness; adjustable from the notification and Quick Settings |
+| **Live View** | Watch the phone camera (security / document camera) or its screen live in a PC browser, up to original quality (screen at its own resolution, camera up to 4K, full-resolution snapshots); shortcut to File Transfer's Live view |
 | **Scanner** | Reads QR codes and barcodes, with actions for links, Wi-Fi, contacts, and typing the code on the PC |
 | **QR & Barcode Maker** | QR codes in many designs, plus Code 128, EAN-13, EAN-8, UPC-A and Code 39 barcodes |
-| **File Transfer** | Send files and text between the phone and PCs, or PC to PC through the phone, from any web browser on the same Wi-Fi or hotspot. New browsers must be approved on the phone and can't see its files unless given shared-folder or full access. Also in the share sheet as *Send to PC*. Nothing to install on the PCs |
+| **File Transfer** | Send files and text between the phone and PCs, or PC to PC through the phone, from any web browser on the same Wi-Fi or hotspot. New browsers must be approved on the phone and can't see its files unless given shared-folder or full access. Also in the share sheet as *Send to PC*. **Live view** shows the phone's camera (security / document cam, switch lens, light, snapshot) or mirrors its screen in the browser while you share it. Nothing to install on the PCs |
 
 A fullscreen toggle is available on every screen and is remembered.
 

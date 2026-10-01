@@ -2,12 +2,14 @@ package com.truckcontroller.pro
 
 import android.Manifest
 import android.app.DownloadManager
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
+import android.media.projection.MediaProjectionManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -43,6 +45,7 @@ import com.truckcontroller.pro.transfer.FileTransfer.Access
 import com.truckcontroller.pro.transfer.FileTransfer.Direction
 import com.truckcontroller.pro.transfer.FileTransfer.ServerState
 import com.truckcontroller.pro.transfer.Hub
+import com.truckcontroller.pro.transfer.LiveShare
 import java.util.Date
 
 /**
@@ -52,6 +55,20 @@ import java.util.Date
  * the phone also sends files and text to connected PCs and receives theirs.
  */
 class FileTransferActivity : ToolActivity() {
+
+    companion object {
+        private const val EXTRA_SHOW_LIVE = "show_live"
+        /** How long a "share after turning on" request waits for the server. */
+        private const val PENDING_LIVE_MS = 3 * 60_000L
+
+        /** Opens this screen scrolled to Live view (Home's camera / screen tiles). */
+        fun live(context: Context) = Intent(context, FileTransferActivity::class.java).putExtra(EXTRA_SHOW_LIVE, true)
+    }
+
+    private lateinit var scroll: ScrollView
+    /** "camera" or "screen" to start once File Transfer is running. */
+    private var pendingLive: String? = null
+    private var pendingLiveAt = 0L
 
     private val accent = Color.parseColor("#38BDF8")
     private val handler = Handler(Looper.getMainLooper())
@@ -66,6 +83,9 @@ class FileTransferActivity : ToolActivity() {
     private lateinit var qrImage: ImageView
     private lateinit var devicesBox: LinearLayout
     private lateinit var sendCard: View
+    private lateinit var liveCard: View
+    private lateinit var liveBox: LinearLayout
+    private var liveKey = ""
     private lateinit var inboxBox: LinearLayout
     private lateinit var connectedText: TextView
     private lateinit var totalsText: TextView
@@ -100,6 +120,21 @@ class FileTransferActivity : ToolActivity() {
     private val notificationPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { FileTransfer.start(this) }
 
+    private val cameraPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            if (granted) FileTransfer.startCameraShare(this) else toast("Camera permission is needed to share the camera")
+        }
+
+    private val screenCaptureLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            val data = result.data
+            if (result.resultCode == RESULT_OK && data != null) {
+                FileTransfer.startScreenShare(this, result.resultCode, data)
+            } else {
+                toast("Screen sharing cancelled")
+            }
+        }
+
     private val pickFilesLauncher = registerForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
         if (uris.isEmpty()) return@registerForActivityResult
         // Keep read access while the PCs download, even if this screen closes
@@ -126,10 +161,24 @@ class FileTransferActivity : ToolActivity() {
         page.addCard(devicesCard())
         sendCard = sendCard()
         page.addCard(sendCard)
+        liveCard = liveCard()
+        page.addCard(liveCard)
         page.addCard(activityCard())
         page.addCard(securityCard())
         page.addCard(helpCard())
-        setContentView(toolPage("File Transfer", R.drawable.ic_transfer, accent, ScrollView(this).apply { addView(page) }))
+        scroll = ScrollView(this).apply { addView(page) }
+        setContentView(toolPage("File Transfer", R.drawable.ic_transfer, accent, scroll))
+        if (intent.getBooleanExtra(EXTRA_SHOW_LIVE, false)) scrollToLive()
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        if (intent.getBooleanExtra(EXTRA_SHOW_LIVE, false)) scrollToLive()
+    }
+
+    private fun scrollToLive() {
+        scroll.postDelayed({ scroll.smoothScrollTo(0, (liveCard.top - dp(8)).coerceAtLeast(0)) }, 200)
     }
 
     override fun onResume() {
@@ -305,6 +354,9 @@ class FileTransferActivity : ToolActivity() {
         val running = state == ServerState.RUNNING
         pcCard.visibility = if (running) View.VISIBLE else View.GONE
         sendCard.visibility = if (running) View.VISIBLE else View.GONE
+        // Live view is always shown; sharing turns File Transfer on when needed
+        renderLive()
+        runPendingLive(state)
         if (running) renderAddresses()
 
         val hub = FileTransfer.hub
@@ -610,6 +662,179 @@ class FileTransferActivity : ToolActivity() {
 
     private fun updateFolders(change: (List<FileTransfer.SharedFolder>) -> List<FileTransfer.SharedFolder>) {
         FileTransfer.setSharedFolders(this, change(FileTransfer.sharedFolders(this)))
+    }
+
+    // ------------------------------------------------------------------
+    // Live view: camera and screen in the browser
+    // ------------------------------------------------------------------
+
+    private fun liveCard() = titledCard("LIVE VIEW", R.drawable.ic_eye, accent).apply {
+        addView(hint("Show this phone's camera or screen in the browser of devices you allowed. " +
+            "Nothing is shared until you start it here; open the Live tab in the browser to watch."))
+        liveBox = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
+        addView(liveBox, LinearLayout.LayoutParams(MATCH, WRAP).apply { topMargin = dp(4) })
+    }
+
+    private fun renderLive() {
+        val cam = LiveShare.camera
+        val scr = LiveShare.screen
+        val quality = LiveShare.quality(this)
+        val serverOn = FileTransfer.isRunning
+        val key = "$serverOn|$pendingLive|${cam.on}|${scr.on}|${LiveShare.lens}|${LiveShare.torch}|${LiveShare.hasTorch}|${LiveShare.rotation}|" +
+            "${cam.viewerNames()}|${scr.viewerNames()}|$quality"
+        if (key == liveKey) return
+        liveKey = key
+        liveBox.removeAllViews()
+
+        fun watching(names: List<String>) = when (names.size) {
+            0 -> "nobody watching yet"
+            1 -> "${names[0]} watching"
+            else -> "${names.size} watching: ${names.joinToString()}"
+        }
+
+        if (!serverOn) {
+            liveBox.addView(hint(if (pendingLive != null) "Turning on File Transfer…"
+                else "File Transfer is off. It turns on when you start sharing.").apply {
+                setTextColor(color(R.color.amber_400))
+            }, LinearLayout.LayoutParams(MATCH, WRAP).apply { bottomMargin = dp(8) })
+        }
+
+        // Camera
+        liveBox.addView(liveRow(
+            "Camera",
+            if (cam.on) "On · ${LiveShare.lens} camera · ${watching(cam.viewerNames())}" else "Off",
+            cam.on,
+        ))
+        liveBox.addView(LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            if (!cam.on) {
+                addView(button("Share camera", filled = true) { requestShare("camera") }, LinearLayout.LayoutParams(0, dp(42), 1f))
+            } else {
+                addView(button("Stop", filled = false) { FileTransfer.stopCameraShare(this@FileTransferActivity) }.apply {
+                    setTextColor(color(R.color.red_400))
+                }, LinearLayout.LayoutParams(0, dp(42), 1f))
+                addView(button("Switch", filled = false) { LiveShare.control?.invoke("camera", "lens") },
+                    LinearLayout.LayoutParams(0, dp(42), 1f).apply { marginStart = dp(8) })
+                if (LiveShare.hasTorch) {
+                    addView(button(if (LiveShare.torch) "Light off" else "Light", filled = false) { LiveShare.control?.invoke("camera", "torch") },
+                        LinearLayout.LayoutParams(0, dp(42), 1f).apply { marginStart = dp(8) })
+                }
+                addView(button("Rotate", filled = false) { LiveShare.control?.invoke("camera", "rotate") },
+                    LinearLayout.LayoutParams(0, dp(42), 1f).apply { marginStart = dp(8) })
+            }
+        }, LinearLayout.LayoutParams(MATCH, WRAP).apply { topMargin = dp(8) })
+
+        // Screen
+        liveBox.addView(liveRow(
+            "Screen",
+            if (scr.on) "On · ${watching(scr.viewerNames())}" else "Off · Android asks you to confirm each time",
+            scr.on,
+        ), LinearLayout.LayoutParams(MATCH, WRAP).apply { topMargin = dp(14) })
+        liveBox.addView(
+            if (!scr.on) button("Share screen", filled = true) { requestShare("screen") }
+            else button("Stop screen sharing", filled = false) { FileTransfer.stopScreenShare(this) }.apply {
+                setTextColor(color(R.color.red_400))
+            },
+            LinearLayout.LayoutParams(MATCH, dp(42)).apply { topMargin = dp(8) },
+        )
+
+        // Quality
+        liveBox.addView(sectionLabel("PICTURE QUALITY"), LinearLayout.LayoutParams(MATCH, WRAP).apply { topMargin = dp(14) })
+        liveBox.addView(LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            LiveShare.Quality.entries.forEachIndexed { i, q ->
+                addView(TextView(context).apply {
+                    text = q.title
+                    textSize = 13f
+                    gravity = Gravity.CENTER
+                    setTypeface(typeface, Typeface.BOLD)
+                    val on = q == quality
+                    setTextColor(if (on) Color.parseColor("#062033") else color(R.color.slate_300))
+                    background = GradientDrawable().apply {
+                        cornerRadius = dp(10).toFloat()
+                        setColor(if (on) accent else Color.parseColor("#1E293B"))
+                    }
+                    setOnClickListener {
+                        haptics.performButtonClickHaptic()
+                        LiveShare.setQuality(this@FileTransferActivity, q)
+                        liveKey = ""
+                        if (LiveShare.sharing) toast("Applies the next time you start sharing")
+                    }
+                }, LinearLayout.LayoutParams(0, dp(36), 1f).apply { if (i > 0) marginStart = dp(8) })
+            }
+        }, LinearLayout.LayoutParams(MATCH, WRAP).apply { topMargin = dp(6) })
+        liveBox.addView(hint(if (quality.original) {
+            "Original: the screen at its own resolution and the camera at up to 4K, near-lossless. " +
+                "About 10–15 frames a second and 5–10 MB/s per viewer: use 5 GHz Wi-Fi."
+        } else {
+            "Low saves data and battery; High is sharper; Original is full resolution."
+        } + " Camera snapshots are full-resolution photos. Apps that block screenshots show black."),
+            LinearLayout.LayoutParams(MATCH, WRAP).apply { topMargin = dp(6) })
+    }
+
+    private fun liveRow(title: String, status: String, on: Boolean) = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+        addView(TextView(context).apply {
+            text = if (on) "\u25CF $title" else title
+            textSize = 15f
+            setTypeface(typeface, Typeface.BOLD)
+            setTextColor(if (on) color(R.color.red_400) else Color.WHITE)
+        })
+        addView(hint(status))
+    }
+
+    /** Shares now, or offers to turn File Transfer on first and shares once it runs. */
+    private fun requestShare(kind: String) {
+        if (FileTransfer.isRunning) {
+            if (kind == "camera") startCameraShare() else startScreenShare()
+            return
+        }
+        val what = if (kind == "camera") "camera" else "screen"
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Turn on File Transfer?")
+            .setMessage("Live view sends the $what to PC browsers through File Transfer. It turns on now, " +
+                "then sharing starts. On the PC, open the address shown here and allow the PC when it asks.")
+            .setPositiveButton("Turn on & share") { _, _ ->
+                pendingLive = kind
+                pendingLiveAt = android.os.SystemClock.elapsedRealtime()
+                liveKey = ""
+                FileTransfer.error = null
+                if (FileTransfer.state == ServerState.OFF) onToggle()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    /** Starts the share asked for before File Transfer was on, once it is running. */
+    private fun runPendingLive(state: ServerState) {
+        val kind = pendingLive ?: return
+        when {
+            state == ServerState.RUNNING -> {
+                pendingLive = null
+                liveKey = ""
+                if (kind == "camera") startCameraShare() else startScreenShare()
+            }
+            // Gave up (permission declined, port error) or took too long
+            android.os.SystemClock.elapsedRealtime() - pendingLiveAt > PENDING_LIVE_MS ||
+                (state == ServerState.OFF && FileTransfer.error != null && !startWhenAllowed) -> {
+                pendingLive = null
+                liveKey = ""
+            }
+        }
+    }
+
+    private fun startCameraShare() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+            FileTransfer.startCameraShare(this)
+        } else {
+            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+        }
+    }
+
+    private fun startScreenShare() {
+        val manager = getSystemService(MediaProjectionManager::class.java)
+        runCatching { screenCaptureLauncher.launch(manager.createScreenCaptureIntent()) }
+            .onFailure { toast("Screen sharing isn't available on this phone") }
     }
 
     // ------------------------------------------------------------------

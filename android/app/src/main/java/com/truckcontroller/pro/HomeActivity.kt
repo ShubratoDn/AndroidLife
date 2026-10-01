@@ -36,6 +36,7 @@ import com.truckcontroller.pro.dimmer.NightScreen
 import com.truckcontroller.pro.input.InputMode
 import com.truckcontroller.pro.speed.SpeedTracker
 import com.truckcontroller.pro.transfer.FileTransfer
+import com.truckcontroller.pro.transfer.LiveShare
 import com.truckcontroller.pro.ui.ActionTile
 import java.util.Locale
 
@@ -119,6 +120,8 @@ class HomeActivity : ToolActivity() {
                     InputMode.NUMPAD_TOUCHPAD -> "numpad numeric calculator"
                     InputMode.KEYBOARD_FULL -> "full 104 function keys numpad"
                     InputMode.PRESENTATION -> "presentation slides powerpoint clicker laser pointer timer"
+                    InputMode.AIR_MOUSE -> "air mouse gyroscope gyro point pointer motion wave presentation remote tv"
+                    InputMode.TYPE_TEXT -> "type text paste clipboard password code send text autotype typing"
                     else -> ""
                 }, open = { startActivity(InputActivity.intent(this, mode)) })
         }
@@ -172,6 +175,18 @@ class HomeActivity : ToolActivity() {
                     } else "Phone ⇄ PCs over Wi-Fi" to false
                 },
                 open = go(FileTransferActivity::class.java)),
+            Tool("Live View", "Camera & screen in a PC browser", R.drawable.ic_eye, Color.parseColor("#FB7185"),
+                Category.UTILITY, "live view webcam camera security cam cctv baby monitor document camera stream " +
+                    "screen mirror mirroring cast share screen phone screen on pc laptop browser wifi presentation demo",
+                live = {
+                    val what = listOfNotNull(
+                        "camera".takeIf { LiveShare.camera.on },
+                        "screen".takeIf { LiveShare.screen.on },
+                    )
+                    if (what.isEmpty()) "Camera & screen in a PC browser" to false
+                    else "Live · ${what.joinToString(" + ")} · ${LiveShare.camera.viewerCount + LiveShare.screen.viewerCount} watching" to true
+                },
+                open = { startActivity(FileTransferActivity.live(this)) }),
             Tool("Scanner", "QR codes & barcodes", R.drawable.ic_qr, color(R.color.cyan_400),
                 Category.UTILITY, "scanner scan qr code barcode camera wifi link",
                 open = go(ScannerActivity::class.java)),

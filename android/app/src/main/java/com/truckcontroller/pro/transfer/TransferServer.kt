@@ -114,6 +114,7 @@ class TransferServer(private val context: Context, private val hub: Hub) {
     companion object {
         private const val COOKIE = "pd"
         private const val REMEMBER_SECONDS = 30L * 24 * 60 * 60
+        private const val BOUNDARY = "phonedeckframe"
         private const val BUFFER = 256 * 1024
         private const val THUMB = 320
         private const val MAX_PREVIEW = 2048
@@ -309,7 +310,8 @@ class TransferServer(private val context: Context, private val hub: Hub) {
         200 -> "OK"; 204 -> "No Content"; 206 -> "Partial Content"; 400 -> "Bad Request"
         401 -> "Unauthorized"; 403 -> "Forbidden"; 404 -> "Not Found"; 405 -> "Method Not Allowed"
         409 -> "Conflict"; 411 -> "Length Required"; 413 -> "Payload Too Large"; 416 -> "Range Not Satisfiable"
-        429 -> "Too Many Requests"; 431 -> "Request Header Fields Too Large"; 507 -> "Insufficient Storage"
+        429 -> "Too Many Requests"; 431 -> "Request Header Fields Too Large"; 503 -> "Service Unavailable"
+        507 -> "Insufficient Storage"
         else -> "Error"
     }
 
@@ -409,6 +411,9 @@ class TransferServer(private val context: Context, private val hub: Hub) {
             req.path == "/api/shares/upload" && req.method == "PUT" -> shareUpload(req, out, device)
             req.path == "/api/shares/download" && get -> shareDownload(req, out, device)
             req.path == "/api/text" && post -> text(req, out, device)
+            req.path == "/api/live/stream" && get -> liveStream(req, out, device)
+            req.path == "/api/live/snapshot" && get -> liveSnapshot(req, out, device)
+            req.path == "/api/live/control" && post -> liveControl(req, out)
             req.path == "/api/list" && get -> list(req, out, device)
             req.path == "/api/file" && get -> file(req, out, device)
             req.path == "/api/thumb" && get -> thumb(req, out, device)
@@ -582,6 +587,70 @@ class TransferServer(private val context: Context, private val hub: Hub) {
         val body = req.body.json(64 * 1024)
         val to = body.optJSONArray("to") ?: throw HttpError(400, "Choose who to send to")
         hub.sendText(device.id, device.name, (0 until to.length()).map { to.getString(it) }, body.optString("text"))
+        return ok(out, req)
+    }
+
+    // ------------------------------------------------------------------
+    // Live view: camera / screen as MJPEG
+    // ------------------------------------------------------------------
+
+    private fun liveSource(req: Request): LiveSource {
+        val source = LiveShare.source(req.param("src")) ?: throw HttpError(404, "Unknown source")
+        if (!source.on) throw HttpError(409, "The phone isn't sharing its ${source.id} right now")
+        return source
+    }
+
+    /** Endless multipart response: each part is one JPEG frame (browsers show it in an <img>). */
+    private fun liveStream(req: Request, out: OutputStream, device: Hub.Device): Boolean {
+        val source = liveSource(req)
+        writeHead(out, 200, listOf(
+            "Content-Type" to "multipart/x-mixed-replace; boundary=$BOUNDARY",
+            "Cache-Control" to "no-store",
+        ), keepAlive = false)
+        out.flush()
+        val viewer = source.addViewer(device.name)
+        try {
+            var seq = 0L
+            while (running && source.on && hub.isCurrent(device)) {
+                val (next, frame) = source.await(seq, 2_000) ?: continue
+                seq = next
+                out.write("--$BOUNDARY\r\nContent-Type: image/jpeg\r\nContent-Length: ${frame.size}\r\n\r\n".toByteArray())
+                out.write(frame)
+                out.write("\r\n".toByteArray())
+                out.flush()
+                FileTransfer.bytesSent.addAndGet(frame.size.toLong())
+            }
+        } finally {
+            source.removeViewer(viewer)
+        }
+        return false
+    }
+
+    private fun liveSnapshot(req: Request, out: OutputStream, device: Hub.Device): Boolean {
+        val source = liveSource(req)
+        // Camera: a real full-resolution photo when the phone can take one next to the stream
+        val photo = if (source === LiveShare.camera) LiveShare.takePhoto?.let { take ->
+            val done = java.util.concurrent.CountDownLatch(1)
+            var bytes: ByteArray? = null
+            take { bytes = it; done.countDown() }
+            done.await(8, TimeUnit.SECONDS)
+            bytes
+        } else null
+        val frame = photo ?: source.snapshot(3_000) ?: throw HttpError(503, "No picture yet, try again")
+        val stamp = android.text.format.DateFormat.format("yyyy-MM-dd HH-mm-ss", System.currentTimeMillis())
+        FileTransfer.log("${device.name} saved a snapshot of the ${source.id}")
+        return sendBytes(out, req, 200, "image/jpeg", frame, listOf(
+            "Content-Disposition" to disposition("attachment", "${source.id} $stamp.jpg"),
+            "Cache-Control" to "no-store",
+        ))
+    }
+
+    private fun liveControl(req: Request, out: OutputStream): Boolean {
+        val source = liveSource(req)
+        val action = req.param("action")
+        if (source !== LiveShare.camera || action !in setOf("lens", "torch", "rotate")) throw HttpError(400, "Unknown action")
+        val control = LiveShare.control ?: throw HttpError(409, "Not available")
+        control(source.id, action!!)
         return ok(out, req)
     }
 

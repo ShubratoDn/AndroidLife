@@ -618,6 +618,54 @@ class BluetoothHidService private constructor(private val context: Context) {
         return strokes.size
     }
 
+    /** A running [typeTextJob]; [cancel] stops it after the current key. */
+    class TypingJob internal constructor(val total: Int, val skipped: Int) {
+        @Volatile var cancelled = false
+            private set
+
+        fun cancel() {
+            cancelled = true
+        }
+    }
+
+    /** Characters of [text] a US keyboard can't type (line feeds from Windows text count as typeable). */
+    fun untypeable(text: String): Int = text.count { it != '\r' && usKeyFor(it) == null }
+
+    /**
+     * Types [text] one key at a time with [keyMs] per press and release, reporting progress, so long
+     * text can be stopped part way. Callbacks run on the sender thread. Characters without a key on a
+     * US keyboard are skipped.
+     */
+    fun typeTextJob(
+        text: String,
+        keyMs: Long,
+        onProgress: (typed: Int, total: Int) -> Unit,
+        onDone: (completed: Boolean) -> Unit,
+    ): TypingJob {
+        val strokes = text.mapNotNull { usKeyFor(it) }
+        val job = TypingJob(strokes.size, untypeable(text))
+        var index = 0
+        val step = object : Runnable {
+            override fun run() {
+                if (job.cancelled || index >= strokes.size || connectedDevice == null) {
+                    send(REPORT_ID_KEYBOARD, keyboardReport(kbModifiers, kbKeys))
+                    onDone(!job.cancelled && index >= strokes.size)
+                    return
+                }
+                val (usage, shift) = strokes[index]
+                send(REPORT_ID_KEYBOARD, keyboardReport(if (shift) 0x02 else 0, intArrayOf(usage)))
+                sender.postDelayed({
+                    send(REPORT_ID_KEYBOARD, keyboardReport(kbModifiers, kbKeys))
+                    index++
+                    if (index % 5 == 0 || index == strokes.size) onProgress(index, strokes.size)
+                    sender.postDelayed(this, keyMs)
+                }, keyMs)
+            }
+        }
+        sender.post(step)
+        return job
+    }
+
     /** Key usage and whether Shift is needed for [c] on a US keyboard layout. */
     private fun usKeyFor(c: Char): Pair<Int, Boolean>? = when (c) {
         in 'a'..'z' -> 0x04 + (c - 'a') to false

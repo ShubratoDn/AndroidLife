@@ -112,6 +112,43 @@ fun Activity.showSettingsDialog(initial: ControllerSettings, onChange: (Controll
         onChange { v -> update { it.copy(soundVolume = v) }; refreshLabels() }
     }
 
+    // Tilt steering (added in code below the sound settings)
+    val root = (view as android.widget.ScrollView).getChildAt(0) as android.widget.LinearLayout
+    root.addView(TextView(this, null, 0, R.style.Cockpit_Mono).apply {
+        text = "TILT STEERING"
+        textSize = 12f
+        setTypeface(typeface, android.graphics.Typeface.BOLD)
+        setTextColor(ContextCompat.getColor(context, R.color.accent))
+        setPadding(0, dp(20), 0, 0)
+    })
+    root.addView(SwitchMaterial(this).apply {
+        text = "Steer by turning the phone"
+        isChecked = settings.tiltSteering
+        setTextColor(ContextCompat.getColor(context, R.color.slate_300))
+        setOnCheckedChangeListener { _, checked -> update { it.copy(tiltSteering = checked) } }
+    })
+    val tvTilt = TextView(this).apply {
+        textSize = 14f
+        setTextColor(ContextCompat.getColor(context, R.color.slate_400))
+        setPadding(0, dp(6), 0, 0)
+        text = "Turn the phone ${settings.tiltRange}° for full lock"
+    }
+    root.addView(tvTilt)
+    root.addView(SeekBar(this).apply {
+        max = (180 - 30) / 5
+        progress = (settings.tiltRange - 30) / 5
+        onChange { v ->
+            val range = 30 + v * 5
+            update { it.copy(tiltRange = range) }
+            tvTilt.text = "Turn the phone $range° for full lock"
+        }
+    })
+    root.addView(TextView(this).apply {
+        textSize = 12f
+        setTextColor(ContextCompat.getColor(context, R.color.slate_500))
+        text = "Smaller = more sensitive. Tap the 0° button by the wheel to set the straight-ahead position."
+    })
+
     MaterialAlertDialogBuilder(this)
         .setTitle("Controller Settings")
         .setView(view)
