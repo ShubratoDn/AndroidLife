@@ -123,6 +123,12 @@
             app:tint="@color/blue_400" />
 
         <ImageButton
+            android:id="@+id/btnCbToggle"
+            style="@style/Cockpit.HeaderIcon"
+            android:contentDescription="Show or hide the CB radio"
+            android:src="@drawable/ic_radio" />
+
+        <ImageButton
             android:id="@+id/btnMappings"
             style="@style/Cockpit.HeaderIcon"
             android:contentDescription="Button mappings"
@@ -222,6 +228,7 @@
                 <TextView
                     android:id="@+id/tvAngle"
                     style="@style/Cockpit.Mono"
+                    android:singleLine="true"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
@@ -259,6 +266,7 @@
                 <TextView
                     android:id="@+id/tvOut"
                     style="@style/Cockpit.Mono"
+                    android:singleLine="true"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
@@ -278,131 +286,32 @@
             android:gravity="center"
             android:orientation="vertical">
 
-            <!-- Shifter module -->
-            <LinearLayout
-                android:layout_width="wrap_content"
-                android:layout_height="0dp"
-                android:layout_weight="0.85"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
-
-                <LinearLayout
-                    android:layout_width="wrap_content"
-                    android:layout_height="match_parent"
-                    android:background="@drawable/bg_panel"
-                    android:orientation="horizontal"
-                    android:padding="5dp">
-
-                    <ImageButton
-                        android:id="@+id/btnGearUp"
-                        style="@style/Cockpit.StepButton"
-                        android:layout_width="50dp"
-                        android:layout_height="match_parent"
-                        android:contentDescription="Shift up"
-                        android:src="@drawable/ic_chevron_up"
-                        app:tint="@color/emerald_400" />
-
-                    <LinearLayout
-                        android:layout_width="84dp"
-                        android:layout_height="match_parent"
-                        android:layout_marginStart="8dp"
-                        android:layout_marginEnd="8dp"
-                        android:background="@drawable/bg_gear_display"
-                        android:gravity="center"
-                        android:orientation="vertical">
-
-                        <TextView
-                            style="@style/Cockpit.Mono"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:letterSpacing="0.2"
-                            android:text="GEAR"
-                            android:textColor="@color/slate_500"
-                            android:textSize="9sp"
-                            android:textStyle="bold" />
-
-                        <TextView
-                            android:id="@+id/tvGear"
-                            style="@style/Cockpit.Mono"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="2dp"
-                            android:shadowColor="#80FBBF24"
-                            android:shadowRadius="12"
-                            android:text="N"
-                            android:textColor="@color/amber_400"
-                            android:textSize="24sp"
-                            android:textStyle="bold" />
-                    </LinearLayout>
-
-                    <ImageButton
-                        android:id="@+id/btnGearDown"
-                        style="@style/Cockpit.StepButton"
-                        android:layout_width="50dp"
-                        android:layout_height="match_parent"
-                        android:contentDescription="Shift down"
-                        android:src="@drawable/ic_chevron_down"
-                        app:tint="@color/red_400" />
-                </LinearLayout>
-
-                <ImageButton
-                    android:id="@+id/btnShifterMode"
-                    style="@style/Cockpit.StepButton"
-                    android:layout_width="44dp"
-                    android:layout_height="44dp"
-                    android:layout_marginStart="10dp"
-                    android:contentDescription="Cycle shifter mode"
-                    android:padding="11dp"
-                    android:src="@drawable/ic_sliders_vertical" />
-            </LinearLayout>
-
-            <!-- Row 1: function switches -->
+            <!-- Row 1: steppers (retarder, cruise speed, quick look) -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
-                android:layout_marginTop="8dp"
-                android:layout_weight="1"
+                android:layout_weight="0.78"
                 android:background="@drawable/bg_panel"
                 android:orientation="horizontal"
                 android:padding="5dp">
 
-                <!-- Retarder -->
                 <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="match_parent"
-                    android:layout_marginEnd="3dp"
-                    android:layout_weight="1.15"
+                    android:layout_weight="1"
                     android:background="@drawable/bg_tile"
+                    android:gravity="center_vertical"
                     android:orientation="horizontal"
-                    android:padding="3dp">
+                    android:padding="4dp">
 
-                    <LinearLayout
+                    <ImageButton
+                        android:id="@+id/btnRetarderDown"
+                        style="@style/Cockpit.StepButton"
                         android:layout_width="0dp"
                         android:layout_height="match_parent"
                         android:layout_weight="1"
-                        android:orientation="vertical">
-
-                        <ImageButton
-                            android:id="@+id/btnRetarderUp"
-                            style="@style/Cockpit.StepButton"
-                            android:layout_width="match_parent"
-                            android:layout_height="0dp"
-                            android:layout_weight="1"
-                            android:contentDescription="Retarder up"
-                            android:padding="2dp"
-                            android:src="@drawable/ic_chevron_up" />
-
-                        <ImageButton
-                            android:id="@+id/btnRetarderDown"
-                            style="@style/Cockpit.StepButton"
-                            android:layout_width="match_parent"
-                            android:layout_height="0dp"
-                            android:layout_marginTop="3dp"
-                            android:layout_weight="1"
-                            android:contentDescription="Retarder down"
-                            android:padding="2dp"
-                            android:src="@drawable/ic_chevron_down" />
-                    </LinearLayout>
+                        android:contentDescription="Retarder down"
+                        android:src="@drawable/ic_chevron_down" />
 
                     <LinearLayout
                         android:layout_width="0dp"
@@ -415,6 +324,7 @@
                             style="@style/Cockpit.Mono"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
+                            android:letterSpacing="0.15"
                             android:text="RET"
                             android:textColor="@color/slate_500"
                             android:textSize="9sp"
@@ -425,18 +335,131 @@
                             style="@style/Cockpit.Mono"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="4dp"
+                            android:layout_marginTop="2dp"
                             android:text="0"
-                            android:textSize="14sp"
+                            android:textSize="18sp"
                             android:textStyle="bold" />
                     </LinearLayout>
+
+                    <ImageButton
+                        android:id="@+id/btnRetarderUp"
+                        style="@style/Cockpit.StepButton"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:contentDescription="Retarder up"
+                        android:src="@drawable/ic_chevron_up" />
                 </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_marginStart="6dp"
+                    android:layout_weight="1.25"
+                    android:background="@drawable/bg_tile"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:padding="4dp">
+
+                    <TextView
+                        android:id="@+id/btnCruiseDown"
+                        style="@style/Cockpit.Mono"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="0.8"
+                        android:background="@drawable/bg_step_button"
+                        android:contentDescription="Cruise speed down"
+                        android:gravity="center"
+                        android:text="−"
+                        android:textColor="@color/slate_300"
+                        android:textSize="18sp"
+                        android:textStyle="bold" />
+
+                    <com.truckcontroller.pro.ui.ConsoleButton
+                        android:id="@+id/btnCruise"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_marginStart="4dp"
+                        android:layout_marginEnd="4dp"
+                        android:layout_weight="1.3"
+                        android:contentDescription="Cruise control"
+                        app:cbAccent="@color/emerald_400"
+                        app:cbIcon="@drawable/ic_gauge"
+                        app:cbLabel="80" />
+
+                    <TextView
+                        android:id="@+id/btnCruiseUp"
+                        style="@style/Cockpit.Mono"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="0.8"
+                        android:background="@drawable/bg_step_button"
+                        android:contentDescription="Cruise speed up"
+                        android:gravity="center"
+                        android:text="+"
+                        android:textColor="@color/slate_300"
+                        android:textSize="18sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_marginStart="6dp"
+                    android:layout_weight="0.95"
+                    android:background="@drawable/bg_tile"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:padding="4dp">
+
+                    <ImageButton
+                        android:id="@+id/btnLookLeft"
+                        style="@style/Cockpit.StepButton"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:contentDescription="Quick look left"
+                        android:src="@drawable/ic_chevron_left"
+                        app:tint="@color/slate_300" />
+
+                    <TextView
+                        style="@style/Cockpit.Mono"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="4dp"
+                        android:layout_marginEnd="4dp"
+                        android:letterSpacing="0.15"
+                        android:text="LOOK"
+                        android:textColor="@color/slate_500"
+                        android:textSize="9sp"
+                        android:textStyle="bold" />
+
+                    <ImageButton
+                        android:id="@+id/btnLookRight"
+                        style="@style/Cockpit.StepButton"
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"
+                        android:contentDescription="Quick look right"
+                        android:src="@drawable/ic_chevron_right"
+                        app:tint="@color/slate_300" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Row 2: lights and view -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_marginTop="8dp"
+                android:layout_weight="1"
+                android:background="@drawable/bg_panel"
+                android:orientation="horizontal"
+                android:padding="5dp">
 
                 <com.truckcontroller.pro.ui.ConsoleButton
                     android:id="@+id/btnLights"
                     android:layout_width="0dp"
                     android:layout_height="match_parent"
-                    android:layout_marginStart="3dp"
                     android:layout_marginEnd="3dp"
                     android:layout_weight="1"
                     app:cbAccent="@color/cyan_400"
@@ -455,15 +478,77 @@
                     app:cbLabel="BEACON" />
 
                 <com.truckcontroller.pro.ui.ConsoleButton
-                    android:id="@+id/btnCamera"
+                    android:id="@+id/btnInterior"
                     android:layout_width="0dp"
                     android:layout_height="match_parent"
                     android:layout_marginStart="3dp"
                     android:layout_marginEnd="3dp"
                     android:layout_weight="1"
+                    app:cbAccent="@color/blue_400"
+                    app:cbIcon="@drawable/ic_sun"
+                    app:cbLabel="HI-BEAM" />
+
+                <com.truckcontroller.pro.ui.ConsoleButton
+                    android:id="@+id/btnWipers"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_marginStart="3dp"
+                    android:layout_marginEnd="3dp"
+                    android:layout_weight="1"
+                    app:cbAccent="@color/cyan_400"
+                    app:cbIcon="@drawable/ic_wipers"
+                    app:cbLabel="WIPERS" />
+
+                <com.truckcontroller.pro.ui.ConsoleButton
+                    android:id="@+id/btnCamera"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_marginStart="3dp"
+                    android:layout_weight="1"
                     app:cbIcon="@drawable/ic_camera"
                     app:cbIdleIconColor="@color/slate_300"
                     app:cbLabel="CAM 1" />
+            </LinearLayout>
+
+            <!-- Row 3: truck -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_marginTop="8dp"
+                android:layout_weight="1"
+                android:background="@drawable/bg_panel"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:padding="5dp">
+
+                <FrameLayout
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_marginEnd="3dp"
+                    android:layout_weight="1">
+
+                    <com.truckcontroller.pro.ui.ConsoleButton
+                        android:id="@+id/btnEngine"
+                        android:layout_width="58dp"
+                        android:layout_height="58dp"
+                        android:layout_gravity="center"
+                        app:cbAccent="@color/emerald_400"
+                        app:cbIcon="@drawable/ic_power"
+                        app:cbLabel="ENGINE"
+                        app:cbShape="round"
+                        app:cbShowLed="false" />
+                </FrameLayout>
+
+                <com.truckcontroller.pro.ui.ConsoleButton
+                    android:id="@+id/btnTrailer"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_marginStart="3dp"
+                    android:layout_marginEnd="3dp"
+                    android:layout_weight="1"
+                    app:cbAccent="@color/amber_400"
+                    app:cbIcon="@drawable/ic_link"
+                    app:cbLabel="TRAILER" />
 
                 <com.truckcontroller.pro.ui.ConsoleButton
                     android:id="@+id/btnDiffLock"
@@ -487,166 +572,6 @@
                     app:cbIcon="@drawable/ic_axle"
                     app:cbLabel="AXLE" />
 
-                <!-- Cruise control -->
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="match_parent"
-                    android:layout_marginStart="3dp"
-                    android:layout_weight="1.15"
-                    android:background="@drawable/bg_tile"
-                    android:orientation="horizontal"
-                    android:padding="3dp">
-
-                    <com.truckcontroller.pro.ui.ConsoleButton
-                        android:id="@+id/btnCruise"
-                        android:layout_width="0dp"
-                        android:layout_height="match_parent"
-                        android:layout_weight="1"
-                        app:cbAccent="@color/emerald_400"
-                        app:cbIcon="@drawable/ic_gauge"
-                        app:cbLabel="80" />
-
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="match_parent"
-                        android:layout_marginStart="3dp"
-                        android:layout_weight="0.8"
-                        android:orientation="vertical">
-
-                        <TextView
-                            android:id="@+id/btnCruiseUp"
-                            style="@style/Cockpit.Mono"
-                            android:layout_width="match_parent"
-                            android:layout_height="0dp"
-                            android:layout_weight="1"
-                            android:background="@drawable/bg_step_button"
-                            android:gravity="center"
-                            android:text="+"
-                            android:textColor="@color/slate_300"
-                            android:textSize="13sp"
-                            android:textStyle="bold" />
-
-                        <TextView
-                            android:id="@+id/btnCruiseDown"
-                            style="@style/Cockpit.Mono"
-                            android:layout_width="match_parent"
-                            android:layout_height="0dp"
-                            android:layout_marginTop="3dp"
-                            android:layout_weight="1"
-                            android:background="@drawable/bg_step_button"
-                            android:gravity="center"
-                            android:text="-"
-                            android:textColor="@color/slate_300"
-                            android:textSize="13sp"
-                            android:textStyle="bold" />
-                    </LinearLayout>
-                </LinearLayout>
-            </LinearLayout>
-
-            <!-- Row 2: cockpit commands -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="0dp"
-                android:layout_marginTop="8dp"
-                android:layout_weight="1"
-                android:background="@drawable/bg_panel"
-                android:gravity="center_vertical"
-                android:orientation="horizontal"
-                android:padding="5dp">
-
-                <FrameLayout
-                    android:layout_width="0dp"
-                    android:layout_height="match_parent"
-                    android:layout_weight="1">
-
-                    <com.truckcontroller.pro.ui.ConsoleButton
-                        android:id="@+id/btnEngine"
-                        android:layout_width="56dp"
-                        android:layout_height="56dp"
-                        android:layout_gravity="center"
-                        app:cbAccent="@color/emerald_400"
-                        app:cbIcon="@drawable/ic_power"
-                        app:cbLabel="ENGINE\nSTART"
-                        app:cbShape="round"
-                        app:cbShowLed="false" />
-                </FrameLayout>
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="match_parent"
-                    android:layout_marginStart="3dp"
-                    android:layout_marginEnd="3dp"
-                    android:layout_weight="1.45"
-                    android:background="@drawable/bg_tile"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal"
-                    android:padding="4dp">
-
-                    <ImageButton
-                        android:id="@+id/btnLookLeft"
-                        style="@style/Cockpit.StepButton"
-                        android:layout_width="0dp"
-                        android:layout_height="match_parent"
-                        android:layout_weight="1"
-                        android:contentDescription="Quick look left"
-                        android:src="@drawable/ic_chevron_left"
-                        app:tint="@color/slate_300" />
-
-                    <TextView
-                        style="@style/Cockpit.Mono"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="4dp"
-                        android:layout_marginEnd="4dp"
-                        android:text="LOOK"
-                        android:textColor="@color/slate_500"
-                        android:textSize="9sp"
-                        android:textStyle="bold" />
-
-                    <ImageButton
-                        android:id="@+id/btnLookRight"
-                        style="@style/Cockpit.StepButton"
-                        android:layout_width="0dp"
-                        android:layout_height="match_parent"
-                        android:layout_weight="1"
-                        android:contentDescription="Quick look right"
-                        android:src="@drawable/ic_chevron_right"
-                        app:tint="@color/slate_300" />
-                </LinearLayout>
-
-                <com.truckcontroller.pro.ui.ConsoleButton
-                    android:id="@+id/btnTrailer"
-                    android:layout_width="0dp"
-                    android:layout_height="match_parent"
-                    android:layout_marginStart="3dp"
-                    android:layout_marginEnd="3dp"
-                    android:layout_weight="1"
-                    app:cbAccent="@color/amber_400"
-                    app:cbIcon="@drawable/ic_link"
-                    app:cbLabel="TRAILER" />
-
-                <com.truckcontroller.pro.ui.ConsoleButton
-                    android:id="@+id/btnInterior"
-                    android:layout_width="0dp"
-                    android:layout_height="match_parent"
-                    android:layout_marginStart="3dp"
-                    android:layout_marginEnd="3dp"
-                    android:layout_weight="1"
-                    app:cbAccent="@color/cyan_300"
-                    app:cbIcon="@drawable/ic_lightbulb"
-                    app:cbLabel="INTERIOR" />
-
-                <com.truckcontroller.pro.ui.ConsoleButton
-                    android:id="@+id/btnWipers"
-                    android:layout_width="0dp"
-                    android:layout_height="match_parent"
-                    android:layout_marginStart="3dp"
-                    android:layout_marginEnd="3dp"
-                    android:layout_weight="1"
-                    app:cbAccent="@color/cyan_400"
-                    app:cbIcon="@drawable/ic_wipers"
-                    app:cbLabel="WIPERS" />
-
                 <com.truckcontroller.pro.ui.ConsoleButton
                     android:id="@+id/btnParkingBrake"
                     android:layout_width="0dp"
@@ -658,8 +583,10 @@
                     app:cbLabel="P-BRAKE" />
             </LinearLayout>
 
-            <!-- CB radio console -->
+            <!-- CB radio console (shown with the header radio button) -->
             <LinearLayout
+                android:id="@+id/cbPanel"
+                android:visibility="gone"
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
                 android:layout_marginTop="8dp"
@@ -774,6 +701,81 @@
             </LinearLayout>
         </LinearLayout>
 
+        <!-- ===== Vertical shifter, left of the pedals ===== -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_marginEnd="10dp"
+            android:layout_weight="0.3"
+            android:background="@drawable/bg_panel"
+            android:gravity="center_horizontal"
+            android:orientation="vertical"
+            android:padding="5dp">
+
+            <ImageButton
+                android:id="@+id/btnGearUp"
+                style="@style/Cockpit.StepButton"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:contentDescription="Shift up"
+                android:src="@drawable/ic_chevron_up"
+                app:tint="@color/emerald_400" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="58dp"
+                android:layout_marginTop="6dp"
+                android:layout_marginBottom="6dp"
+                android:background="@drawable/bg_gear_display"
+                android:gravity="center"
+                android:orientation="vertical">
+
+                <TextView
+                    style="@style/Cockpit.Mono"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:letterSpacing="0.2"
+                    android:text="GEAR"
+                    android:textColor="@color/slate_500"
+                    android:textSize="9sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tvGear"
+                    style="@style/Cockpit.Mono"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:shadowColor="#80FBBF24"
+                    android:shadowRadius="12"
+                    android:text="N"
+                    android:textColor="@color/amber_400"
+                    android:textSize="24sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <ImageButton
+                android:id="@+id/btnGearDown"
+                style="@style/Cockpit.StepButton"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:contentDescription="Shift down"
+                android:src="@drawable/ic_chevron_down"
+                app:tint="@color/red_400" />
+
+            <ImageButton
+                android:id="@+id/btnShifterMode"
+                style="@style/Cockpit.StepButton"
+                android:layout_width="match_parent"
+                android:layout_height="34dp"
+                android:layout_marginTop="6dp"
+                android:contentDescription="Cycle shifter mode"
+                android:padding="8dp"
+                android:src="@drawable/ic_sliders_vertical" />
+        </LinearLayout>
+
         <!-- ===== Right: look pad and pedals ===== -->
         <LinearLayout
             android:layout_width="0dp"
@@ -781,6 +783,8 @@
             android:layout_weight="0.62"
             android:gravity="center_horizontal"
             android:orientation="vertical">
+
+            <!-- Tap: interior camera (cam 1); drag: look around -->
 
             <com.truckcontroller.pro.ui.LookPanView
                 android:id="@+id/lookPan"
@@ -877,6 +881,7 @@
                 </LinearLayout>
             </LinearLayout>
         </LinearLayout>
+
     </LinearLayout>
 
     <!-- ============ 3. STATUS BAR ============ -->

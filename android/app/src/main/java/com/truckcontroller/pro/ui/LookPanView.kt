@@ -25,6 +25,13 @@ class LookPanView @JvmOverloads constructor(
 
     var onLookChanged: ((x: Float, y: Float) -> Unit)? = null
     var onGrab: (() -> Unit)? = null
+    /** A short tap without dragging (the look still springs back to center). */
+    var onTap: (() -> Unit)? = null
+
+    private var downAt = 0L
+    private var downX = 0f
+    private var downY = 0f
+    private var dragged = false
 
     /** Current thumb position (-1..1). Can also be driven externally, e.g. by quick-look buttons. */
     var lookX = 0f
@@ -84,13 +91,22 @@ class LookPanView @JvmOverloads constructor(
                     pointerId = event.getPointerId(event.actionIndex)
                     parent.requestDisallowInterceptTouchEvent(true)
                     onGrab?.invoke()
-                    update(event.getX(event.actionIndex), event.getY(event.actionIndex))
+                    downAt = event.eventTime
+                    downX = event.getX(event.actionIndex)
+                    downY = event.getY(event.actionIndex)
+                    dragged = false
+                    update(downX, downY)
                 }
                 return true
             }
             MotionEvent.ACTION_MOVE -> {
                 val index = event.findPointerIndex(pointerId)
-                if (index >= 0) update(event.getX(index), event.getY(index))
+                if (index >= 0) {
+                    val x = event.getX(index)
+                    val y = event.getY(index)
+                    if (hypot(x - downX, y - downY) > 10f * density) dragged = true
+                    update(x, y)
+                }
                 return true
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP, MotionEvent.ACTION_CANCEL -> {
@@ -98,6 +114,8 @@ class LookPanView @JvmOverloads constructor(
                 if (all || event.getPointerId(event.actionIndex) == pointerId) {
                     pointerId = MotionEvent.INVALID_POINTER_ID
                     setLook(0f, 0f, notify = true)
+                    val tap = event.actionMasked != MotionEvent.ACTION_CANCEL && !dragged && event.eventTime - downAt < 250
+                    if (tap) onTap?.invoke()
                 }
                 return true
             }

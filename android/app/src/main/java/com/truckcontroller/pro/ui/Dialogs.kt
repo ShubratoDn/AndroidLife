@@ -112,8 +112,40 @@ fun Activity.showSettingsDialog(initial: ControllerSettings, onChange: (Controll
         onChange { v -> update { it.copy(soundVolume = v) }; refreshLabels() }
     }
 
-    // Tilt steering (added in code below the sound settings)
     val root = (view as android.widget.ScrollView).getChildAt(0) as android.widget.LinearLayout
+
+    // Brake strength
+    root.addView(TextView(this, null, 0, R.style.Cockpit_Mono).apply {
+        text = "BRAKE"
+        textSize = 12f
+        setTypeface(typeface, android.graphics.Typeface.BOLD)
+        setTextColor(ContextCompat.getColor(context, R.color.accent))
+        setPadding(0, dp(20), 0, 0)
+    })
+    val tvBrakeStrength = TextView(this).apply {
+        textSize = 14f
+        setTextColor(ContextCompat.getColor(context, R.color.slate_400))
+        setPadding(0, dp(6), 0, 0)
+        text = "Brake strength: ${settings.brakeStrength}% at full pedal"
+    }
+    root.addView(tvBrakeStrength)
+    root.addView(SeekBar(this).apply {
+        max = (100 - 20) / 5
+        progress = (settings.brakeStrength - 20) / 5
+        onChange { v ->
+            val strength = 20 + v * 5
+            update { it.copy(brakeStrength = strength) }
+            tvBrakeStrength.text = "Brake strength: $strength% at full pedal"
+        }
+    })
+    root.addView(TextView(this).apply {
+        textSize = 12f
+        setTextColor(ContextCompat.getColor(context, R.color.slate_500))
+        text = "Light presses brake gently and it builds up toward the end of the pedal. " +
+            "ETS2's own Options › Gameplay › Brake intensity also multiplies this."
+    })
+
+    // Tilt steering (added in code below the sound settings)
     root.addView(TextView(this, null, 0, R.style.Cockpit_Mono).apply {
         text = "TILT STEERING"
         textSize = 12f

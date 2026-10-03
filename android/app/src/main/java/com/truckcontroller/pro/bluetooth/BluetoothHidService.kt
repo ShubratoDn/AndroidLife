@@ -285,6 +285,7 @@ class BluetoothHidService private constructor(private val context: Context) {
         override fun onServiceDisconnected(profile: Int) {
             if (profile == BluetoothProfile.HID_DEVICE) {
                 hidDevice = null
+                proxyRequested = false
                 isRegistered = false
                 connectedDevice = null
                 updateConnection(ConnectionState.OFFLINE, null)
@@ -392,11 +393,20 @@ class BluetoothHidService private constructor(private val context: Context) {
     fun initialize(): Boolean {
         val manager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
         val adapter = manager?.adapter ?: return false
-        if (!adapter.isEnabled) return false
+        if (!adapter.isEnabled) {
+            // A request made before Bluetooth went off is void; ask again once it's back on
+            if (hidDevice == null) proxyRequested = false
+            return false
+        }
         bluetoothAdapter = adapter
-        if (hidDevice != null) return true
-        return adapter.getProfileProxy(context, serviceListener, BluetoothProfile.HID_DEVICE)
+        if (hidDevice != null || proxyRequested) return true
+        // Several screens / events may call this together: ask for the profile only once
+        proxyRequested = adapter.getProfileProxy(context, serviceListener, BluetoothProfile.HID_DEVICE)
+        return proxyRequested
     }
+
+    /** A profile proxy was asked for and hasn't been lost since. */
+    @Volatile private var proxyRequested = false
 
     @SuppressLint("MissingPermission")
     private fun registerHidApp() {

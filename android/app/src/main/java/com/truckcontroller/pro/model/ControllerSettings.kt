@@ -18,6 +18,8 @@ data class ControllerSettings(
     val tiltSteering: Boolean = false,
     /** Phone rotation (degrees each way) that turns the wheel to full lock. */
     val tiltRange: Int = 90,
+    /** Brake output at a fully pressed pedal, in percent; light presses brake gently (curved). */
+    val brakeStrength: Int = 60,
 )
 
 /**
@@ -43,6 +45,7 @@ class SettingsStore(context: Context) {
             }.getOrDefault(defaults.shifterMode),
             tiltSteering = prefs.getBoolean("tiltSteering", defaults.tiltSteering),
             tiltRange = prefs.getInt("tiltRange", defaults.tiltRange),
+            brakeStrength = prefs.getInt("brakeStrength", defaults.brakeStrength),
         )
     }
 
@@ -59,6 +62,7 @@ class SettingsStore(context: Context) {
             .putString("shifterMode", settings.shifterMode.name)
             .putBoolean("tiltSteering", settings.tiltSteering)
             .putInt("tiltRange", settings.tiltRange)
+            .putInt("brakeStrength", settings.brakeStrength)
             .apply()
     }
 }

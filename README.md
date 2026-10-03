@@ -167,7 +167,7 @@ Set the game's steering non-linearity to 0 %; the app already applies its own cu
 | 2 | Gear down | 15 | Hazard lights |
 | 3 | Splitter | 16 | Light modes |
 | 4 | Range | 17 | Beacon |
-| 5 | Engine start / stop | 18 | Interior light |
+| 5 | Engine start / stop | 18 | High beam |
 | 6 | Parking brake | 19 | Wipers |
 | 7 | Retarder + | 20 | Cruise control |
 | 8 | Retarder − | 21 | Cruise speed + |

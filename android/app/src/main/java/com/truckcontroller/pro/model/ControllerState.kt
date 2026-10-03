@@ -52,7 +52,7 @@ class ControllerState {
     // Lights & cabin
     var lightMode = 0                        // 0=off, 1=parking, 2=low, 3=high
     var beaconActive = false
-    var interiorLightActive = false
+    var highBeam = false
     var hazardActive = false
     var turnSignal = TurnSignal.OFF
     var wiperSpeed = 0                       // 0=off, 1=intermittent, 2=slow, 3=fast

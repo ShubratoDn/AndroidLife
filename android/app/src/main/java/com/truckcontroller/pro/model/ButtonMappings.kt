@@ -22,7 +22,7 @@ object HidButton {
     const val HAZARDS = 15
     const val LIGHTS = 16
     const val BEACON = 17
-    const val INTERIOR_LIGHT = 18
+    const val HIGH_BEAM = 18
     const val WIPERS = 19
     const val CRUISE_TOGGLE = 20
     const val CRUISE_UP = 21
@@ -58,7 +58,7 @@ val BUTTON_MAPPINGS = listOf(
     ButtonMapping(HidButton.HAZARDS, "Hazard Lights", "Lighting", "Emergency 4-way flashers"),
     ButtonMapping(HidButton.LIGHTS, "Headlight Modes", "Lighting", "Cycle Off -> Parking -> Low -> High"),
     ButtonMapping(HidButton.BEACON, "Roof Warning Beacon", "Lighting", "Amber flashing roof hazard beacons"),
-    ButtonMapping(HidButton.INTERIOR_LIGHT, "Interior Cabin Light", "Lighting", "Overhead cabin dome light"),
+    ButtonMapping(HidButton.HIGH_BEAM, "High Beam", "Lighting", "Toggle the high beam headlights"),
     ButtonMapping(HidButton.WIPERS, "Windshield Wipers", "Cabin", "Cycle wiper speed modes"),
     ButtonMapping(HidButton.CRUISE_TOGGLE, "Cruise Control", "Drive", "Engage / disengage automatic cruise control"),
     ButtonMapping(HidButton.CRUISE_UP, "Cruise Speed (+)", "Drive", "Increase cruise setpoint by 5 km/h"),

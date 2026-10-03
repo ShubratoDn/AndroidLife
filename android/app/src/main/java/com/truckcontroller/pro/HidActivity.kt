@@ -3,7 +3,10 @@ package com.truckcontroller.pro
 import android.Manifest
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothManager
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.content.res.ColorStateList
 import android.graphics.Color
@@ -58,8 +61,34 @@ abstract class HidActivity : BaseActivity() {
             }
         }
 
+    /**
+     * Asks Android to turn Bluetooth on. The answer must not lead straight to another request:
+     * after "Deny" the screen stays offline until the user taps the Bluetooth button, or turns
+     * Bluetooth on elsewhere (picked up by [bluetoothStateReceiver]).
+     */
     private val enableBluetoothLauncher =
-        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { startBluetoothHid() }
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            askingToEnable = false
+            when {
+                bluetoothOn -> startBluetoothHid(askToEnable = false)
+                // Allowed but still switching on: the state receiver connects when it's on
+                result.resultCode == RESULT_OK -> onConnectionChanged()
+                else -> {
+                    Toast.makeText(this, "Bluetooth is off. Tap the Bluetooth button to turn it on.", Toast.LENGTH_LONG).show()
+                    onConnectionChanged()
+                }
+            }
+        }
+    private var askingToEnable = false
+
+    /** Bluetooth switched on from Quick Settings or system settings: connect without asking. */
+    private val bluetoothStateReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            val state = intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, BluetoothAdapter.ERROR)
+            if (state == BluetoothAdapter.STATE_ON && hasBluetoothPermissions()) startBluetoothHid(askToEnable = false)
+            if (state == BluetoothAdapter.STATE_OFF) onConnectionChanged()
+        }
+    }
 
     // Makes the phone visible so the PC can find and pair with it
     private val discoverableLauncher =
@@ -89,12 +118,16 @@ abstract class HidActivity : BaseActivity() {
     override fun onStart() {
         super.onStart()
         hidService.addConnectionListener(connectionListener)
+        ContextCompat.registerReceiver(
+            this, bluetoothStateReceiver, IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED), ContextCompat.RECEIVER_NOT_EXPORTED
+        )
         onConnectionChanged()
     }
 
     override fun onStop() {
         super.onStop()
         hidService.removeConnectionListener(connectionListener)
+        unregisterReceiver(bluetoothStateReceiver)
     }
 
     override fun onDestroy() {
@@ -106,13 +139,20 @@ abstract class HidActivity : BaseActivity() {
         ContextCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED
     }
 
-    private fun startBluetoothHid() {
+    /** [askToEnable]: show Android's "turn on Bluetooth?" prompt if it's off (once per request). */
+    private fun startBluetoothHid(askToEnable: Boolean = true) {
         if (!hidService.initialize()) {
             val adapter = getSystemService(BluetoothManager::class.java)?.adapter
-            if (adapter != null && !adapter.isEnabled && hasBluetoothPermissions()) {
-                enableBluetoothLauncher.launch(Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE))
-            } else {
-                Toast.makeText(this, "Bluetooth is unavailable on this device", Toast.LENGTH_LONG).show()
+            when {
+                adapter == null -> Toast.makeText(this, "Bluetooth is unavailable on this device", Toast.LENGTH_LONG).show()
+                !adapter.isEnabled -> {
+                    if (askToEnable) {
+                        requestEnableBluetooth()
+                    } else {
+                        Toast.makeText(this, "Bluetooth is off. Tap the Bluetooth button to turn it on.", Toast.LENGTH_LONG).show()
+                    }
+                }
+                else -> Toast.makeText(this, "Bluetooth is unavailable on this device", Toast.LENGTH_LONG).show()
             }
             onConnectionChanged()
             return
@@ -122,6 +162,15 @@ abstract class HidActivity : BaseActivity() {
             window.decorView.postDelayed({ if (!isFinishing) openBluetoothDialog() }, 800)
         }
     }
+
+    private fun requestEnableBluetooth() {
+        if (askingToEnable || !hasBluetoothPermissions()) return
+        askingToEnable = true
+        runCatching { enableBluetoothLauncher.launch(Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)) }
+            .onFailure { askingToEnable = false }
+    }
+
+    private val bluetoothOn get() = getSystemService(BluetoothManager::class.java)?.adapter?.isEnabled == true
 
     private fun makeDiscoverable() {
         if (!hasBluetoothPermissions()) {
@@ -136,6 +185,11 @@ abstract class HidActivity : BaseActivity() {
     protected fun openBluetoothDialog() {
         if (!hasBluetoothPermissions()) {
             permissionLauncher.launch(bluetoothPermissions)
+            return
+        }
+        // Bluetooth off: the button asks to turn it on (the pairing dialog follows once it's on)
+        if (!bluetoothOn) {
+            requestEnableBluetooth()
             return
         }
         if (bluetoothDialog?.dialog?.isShowing == true) return

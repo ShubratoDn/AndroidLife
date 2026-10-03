@@ -36,6 +36,7 @@ import com.truckcontroller.pro.ui.showSettingsDialog
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlin.math.pow
 import kotlin.math.roundToInt
 import kotlin.random.Random
 
@@ -45,6 +46,10 @@ class MainActivity : HidActivity() {
         private const val BLINK_MS = 380L
         private const val QUICK_LOOK_MS = 450L
         private val SIGNAL_BARS = intArrayOf(3, 4, 5, 4, 5, 4)
+        /** Keyboard "1": ETS2's interior camera (cam 1) is bound to it by default. */
+        private const val KEY_1 = 0x1E
+        /** Brake response curve: light presses stay gentle, the last part of the pedal brakes hard. */
+        private const val BRAKE_CURVE = 1.6f
     }
 
     private lateinit var haptics: HapticFeedbackHelper
@@ -336,14 +341,16 @@ class MainActivity : HidActivity() {
             sounds.playAirBrake()
             haptics.performButtonClickHaptic()
         }
-        brakePedal.onValueChanged = { pct ->
-            state.brake = pct
-            hidService.updateAxes(state)
-            tvBrake.text = "${pct.roundToInt()}%"
-        }
+        brakePedal.onValueChanged = { pct -> applyBrake(pct) }
 
-        // Look / pan pad
+        // Look / pan pad: drag to look around, tap for the interior camera
         lookPan.onGrab = { haptics.performButtonClickHaptic() }
+        lookPan.onTap = {
+            feedbackClick()
+            hidService.tapKeys(0, KEY_1)
+            state.cameraView = 1
+            render()
+        }
         lookPan.onLookChanged = { x, y ->
             handler.removeCallbacks(quickLookReset)
             state.lookPanX = x
@@ -423,8 +430,8 @@ class MainActivity : HidActivity() {
             action(HidButton.TRAILER)
         }
         btnInterior.setOnClickListener {
-            state.interiorLightActive = !state.interiorLightActive
-            action(HidButton.INTERIOR_LIGHT)
+            state.highBeam = !state.highBeam
+            action(HidButton.HIGH_BEAM)
         }
         btnWipers.setOnClickListener {
             state.wiperSpeed = (state.wiperSpeed + 1) % 4
@@ -438,7 +445,20 @@ class MainActivity : HidActivity() {
             render()
         }
 
-        // CB radio
+        // CB radio: hidden unless switched on in the header
+        val cbPanel = findViewById<View>(R.id.cbPanel)
+        val cbToggle = findViewById<android.widget.ImageButton>(R.id.btnCbToggle)
+        fun showCb(visible: Boolean) {
+            cbPanel.visibility = if (visible) View.VISIBLE else View.GONE
+            cbToggle.setColorFilter(color(if (visible) R.color.amber_400 else R.color.slate_300))
+        }
+        showCb(getPreferences(MODE_PRIVATE).getBoolean("cbVisible", false))
+        cbToggle.setOnClickListener {
+            feedbackClick()
+            val visible = cbPanel.visibility != View.VISIBLE
+            getPreferences(MODE_PRIVATE).edit().putBoolean("cbVisible", visible).apply()
+            showCb(visible)
+        }
         btnCbMute.setOnClickListener {
             state.cbMuted = !state.cbMuted
             sounds.muted = state.cbMuted
@@ -515,15 +535,24 @@ class MainActivity : HidActivity() {
         haptics.performGearShiftHaptic()
     }
 
+    /**
+     * Always sends the press: the game knows the real retarder step (it changes on its own, e.g.
+     * when the truck stops), so the app's display must never block a press at 0 or 5.
+     */
     private fun changeRetarder(delta: Int) {
-        val next = (state.retarderLevel + delta).coerceIn(0, 5)
         sounds.playRetarderClick()
         haptics.performButtonClickHaptic()
-        if (next == state.retarderLevel) return
-        state.retarderLevel = next
+        state.retarderLevel = (state.retarderLevel + delta).coerceIn(0, 5)
         hidService.pressButton(if (delta > 0) HidButton.RETARDER_UP else HidButton.RETARDER_DOWN)
-        hidService.updateAxes(state)
         render()
+    }
+
+    /** Pedal travel → brake output: curved, and scaled to the brake strength setting. */
+    private fun applyBrake(pedal: Float) {
+        val travel = (pedal / 100f).coerceIn(0f, 1f)
+        state.brake = travel.pow(BRAKE_CURVE) * settings.brakeStrength
+        hidService.updateAxes(state)
+        tvBrake.text = "${state.brake.roundToInt()}%"
     }
 
     private fun toggleTurnSignal(signal: TurnSignal) {
@@ -579,8 +608,14 @@ class MainActivity : HidActivity() {
         }
         val wasTilt = steeringWheel.tiltMode
         steeringWheel.tiltMode = on
-        requestedOrientation = if (on) android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LOCKED
-            else android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+        // Always landscape. Tilt steering pins the current landscape side so turning the phone
+        // like a wheel can't flip the screen; "lock current" could catch portrait while opening.
+        requestedOrientation = when {
+            !on -> android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+            androidx.core.content.ContextCompat.getDisplayOrDefault(this).rotation == android.view.Surface.ROTATION_270 ->
+                android.content.pm.ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE
+            else -> android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+        }
         if (on) {
             tilt.start()
         } else {
@@ -641,7 +676,7 @@ class MainActivity : HidActivity() {
         btnEngine.isActive = state.engineRunning
         btnEngine.label = if (state.engineRunning) "ENGINE\nSTOP" else "ENGINE\nSTART"
         btnTrailer.isActive = state.trailerAttached
-        btnInterior.isActive = state.interiorLightActive
+        btnInterior.isActive = state.highBeam
         btnWipers.isActive = state.wiperSpeed > 0
         btnWipers.label = WIPER_LABELS[state.wiperSpeed]
         btnParkingBrake.isActive = state.parkingBrake
@@ -688,8 +723,8 @@ class MainActivity : HidActivity() {
 
     private fun renderWheelReadout() {
         val angle = state.steeringAngle.roundToInt()
-        tvAngle.text = spans("ANGLE: " to null, (if (angle > 0) "+$angle°" else "$angle°") to android.R.color.white)
-        tvOut.text = spans("OUT: " to null, "${(state.steeringNormalized * 100).roundToInt()}%" to R.color.amber_400)
+        tvAngle.text = spans("ANG " to null, (if (angle > 0) "+$angle°" else "$angle°") to android.R.color.white)
+        tvOut.text = spans("OUT " to null, "${(state.steeringNormalized * 100).roundToInt()}%" to R.color.amber_400)
     }
 
     private fun renderConnection() {
