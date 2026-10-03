@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PhoneDeck – Use Your Phone as an ETS2 Steering Wheel, Keyboard &amp; Mouse | Free Android App</title>
+<meta name="description" content="Free Android app that turns your phone into a Bluetooth steering wheel for Euro Truck Simulator 2, a wireless keyboard, mouse and presentation remote, plus Wi-Fi file transfer. No PC software needed.">
+<link rel="canonical" href="https://shubratodn.github.io/PhoneDeck/">
+<meta name="theme-color" content="#0B0E14">
+<meta name="robots" content="index, follow">
+<link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/icon-512.png">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="PhoneDeck">
+<meta property="og:title" content="PhoneDeck – Your phone as a steering wheel, keyboard & mouse for your PC">
+<meta property="og:description" content="Bluetooth ETS2 steering wheel, wireless keyboard, mouse and presentation remote, Wi-Fi file transfer and 15+ phone tools in one free Android app. No PC software needed.">
+<meta property="og:url" content="https://shubratodn.github.io/PhoneDeck/">
+<meta property="og:image" content="https://shubratodn.github.io/PhoneDeck/og-image.png">
+<meta property="og:image:width" content="1280">
+<meta property="og:image:height" content="640">
+<meta property="og:image:alt" content="PhoneDeck: an Android phone used as a truck steering wheel with pedals and cockpit switches">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="PhoneDeck – Your phone as a steering wheel, keyboard & mouse">
+<meta name="twitter:description" content="Bluetooth ETS2 steering wheel, keyboard, mouse, presentation remote and Wi-Fi file transfer in one free Android app.">
+<meta name="twitter:image" content="https://shubratodn.github.io/PhoneDeck/og-image.png">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "PhoneDeck",
+  "operatingSystem": "Android 9+",
+  "applicationCategory": "UtilitiesApplication",
+  "description": "Turns an Android phone into a Bluetooth steering wheel for Euro Truck Simulator 2, a wireless keyboard, mouse and presentation remote, with Wi-Fi file transfer and phone tools.",
+  "softwareVersion": "1.0.0",
+  "downloadUrl": "https://github.com/ShubratoDn/PhoneDeck/releases/latest",
+  "url": "https://shubratodn.github.io/PhoneDeck/",
+  "image": "https://shubratodn.github.io/PhoneDeck/og-image.png",
+  "author": { "@type": "Person", "name": "Shubrato Debnath" },
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    { "@type": "Question", "name": "Do I need to install anything on my PC?",
+      "acceptedAnswer": { "@type": "Answer", "text": "No. The steering wheel, keyboard and mouse use Bluetooth like any wireless gamepad or keyboard. File Transfer and Live View open in a normal web browser." } },
+    { "@type": "Question", "name": "Can I use my phone as a steering wheel for Euro Truck Simulator 2?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Yes. PhoneDeck appears as a standard Bluetooth game controller with a steering axis, gas and brake pedals and buttons for every cockpit function. Steer with the on-screen wheel or by turning the phone." } },
+    { "@type": "Question", "name": "Does it work with American Truck Simulator and other games?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Any game that supports game controllers can use it. The layout is designed around Euro Truck Simulator 2, which shares its controls with American Truck Simulator." } },
+    { "@type": "Question", "name": "Do I need root?",
+      "acceptedAnswer": { "@type": "Answer", "text": "No. Only the optional Charging Animation tool needs a rooted phone with LSPosed." } },
+    { "@type": "Question", "name": "Which phones are supported?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Android 9 or newer. A few manufacturer systems turn off the Bluetooth HID Device profile; on those the PC tools can't connect, but every phone tool still works." } }
+  ]
+}
+</script>
+
+<style>
+:root {
+  --bg: #0B0E14; --panel: #111620; --panel-2: #151B26; --border: #1E293B;
+  --text: #F1F5F9; --muted: #94A3B8; --dim: #64748B;
+  --orange: #F97316; --teal: #2DD4BF; --sky: #38BDF8;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font: 17px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--sky); text-decoration: none; }
+a:hover { text-decoration: underline; }
+img { max-width: 100%; display: block; }
+.wrap { width: min(1120px, 100% - 32px); margin: 0 auto; }
+
+/* Header */
+header { position: sticky; top: 0; z-index: 10; background: color-mix(in srgb, var(--bg) 85%, transparent); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border); }
+header .wrap { display: flex; align-items: center; gap: 12px; height: 64px; }
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 20px; color: var(--text); }
+.brand:hover { text-decoration: none; }
+.brand img { width: 34px; height: 34px; border-radius: 9px; }
+.brand span { color: var(--teal); }
+nav { margin-left: auto; display: flex; gap: 22px; font-size: 15px; }
+nav a { color: var(--muted); }
+nav a:hover { color: var(--text); text-decoration: none; }
+
+/* Buttons */
+.btn { display: inline-flex; align-items: center; gap: 10px; padding: 14px 22px; border-radius: 14px; font-weight: 700; font-size: 16px; border: 1px solid var(--border); color: var(--text); background: var(--panel-2); }
+.btn:hover { text-decoration: none; border-color: #334155; }
+.btn.primary { background: var(--orange); border-color: var(--orange); color: #1A0A00; }
+.btn.primary:hover { filter: brightness(1.08); }
+.btn svg { width: 20px; height: 20px; }
+
+/* Hero */
+.hero { padding: 72px 0 40px; text-align: center; }
+.hero h1 { font-size: clamp(34px, 6vw, 60px); line-height: 1.08; margin: 0 auto 18px; max-width: 900px; letter-spacing: -0.02em; }
+.hero h1 em { font-style: normal; color: var(--orange); }
+.hero p.lead { font-size: clamp(17px, 2.2vw, 21px); color: var(--muted); max-width: 760px; margin: 0 auto 30px; }
+.cta { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+.meta { margin-top: 16px; color: var(--dim); font-size: 14px; }
+.shot-hero { margin: 48px auto 0; max-width: 1040px; border-radius: 26px; border: 1px solid var(--border); box-shadow: 0 40px 80px rgba(0,0,0,.5); overflow: hidden; background: #000; }
+
+/* Sections */
+section { padding: 72px 0; }
+section h2 { font-size: clamp(28px, 4vw, 40px); margin: 0 0 12px; letter-spacing: -0.01em; }
+section .sub { color: var(--muted); max-width: 720px; margin: 0 0 40px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 18px; }
+.card { background: var(--panel); border: 1px solid var(--border); border-radius: 20px; padding: 26px; }
+.card .ico { width: 46px; height: 46px; border-radius: 13px; display: grid; place-items: center; margin-bottom: 14px; font-size: 24px; }
+.card h3 { margin: 0 0 8px; font-size: 20px; }
+.card p { margin: 0; color: var(--muted); font-size: 16px; }
+
+.feature { display: grid; grid-template-columns: 1.05fr 1fr; gap: 48px; align-items: center; padding: 36px 0; }
+.feature.flip > :first-child { order: 2; }
+.feature h3 { font-size: clamp(24px, 3vw, 32px); margin: 0 0 14px; line-height: 1.2; }
+.feature ul { margin: 0; padding-left: 20px; color: var(--muted); }
+.feature li { margin: 6px 0; }
+.feature .tag { display: inline-block; font-size: 12px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; margin-bottom: 10px; }
+.feature img { border-radius: 20px; border: 1px solid var(--border); box-shadow: 0 24px 50px rgba(0,0,0,.45); }
+.feature img.portrait { max-height: 560px; width: auto; margin: 0 auto; }
+
+.steps { counter-reset: step; }
+.steps .card { position: relative; padding-top: 58px; }
+.steps .card::before { counter-increment: step; content: counter(step); position: absolute; top: 20px; left: 26px; width: 30px; height: 30px; border-radius: 50%; background: var(--orange); color: #1A0A00; font-weight: 800; display: grid; place-items: center; font-size: 15px; }
+
+details { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 18px 22px; margin-bottom: 12px; }
+details summary { cursor: pointer; font-weight: 700; font-size: 18px; list-style: none; display: flex; justify-content: space-between; gap: 16px; }
+details summary::after { content: "+"; color: var(--orange); font-size: 22px; line-height: 1; }
+details[open] summary::after { content: "−"; }
+details p { color: var(--muted); margin: 12px 0 0; }
+
+.final { text-align: center; padding: 80px 0; }
+.final h2 { margin-bottom: 14px; }
+.final p { color: var(--muted); margin: 0 auto 28px; max-width: 560px; }
+
+footer { border-top: 1px solid var(--border); padding: 32px 0 48px; color: var(--dim); font-size: 14px; }
+footer .wrap { display: flex; flex-wrap: wrap; gap: 12px 28px; justify-content: space-between; }
+
+@media (max-width: 820px) {
+  nav { display: none; }
+  .hero { padding-top: 48px; }
+  .feature, .feature.flip { grid-template-columns: 1fr; gap: 24px; }
+  .feature.flip > :first-child { order: 0; }
+  section { padding: 52px 0; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <a class="brand" href="./"><img src="assets/logo.svg" alt="" width="34" height="34">Phone<span>Deck</span></a>
+    <nav aria-label="Main">
+      <a href="#features">Features</a>
+      <a href="#how">How it works</a>
+      <a href="#faq">FAQ</a>
+      <a href="https://github.com/ShubratoDn/PhoneDeck">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <div class="hero wrap">
+    <h1>Your phone as a <em>steering wheel</em>, keyboard &amp; mouse for your PC</h1>
+    <p class="lead">PhoneDeck turns an Android phone into a Bluetooth controller for Euro Truck Simulator 2, a wireless
+      keyboard, mouse and presentation remote, and a Wi-Fi bridge to any browser. Free, and nothing to install on the PC.</p>
+    <div class="cta">
+      <a class="btn primary" href="https://github.com/ShubratoDn/PhoneDeck/releases/latest">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+        Download the APK
+      </a>
+      <a class="btn" href="https://github.com/ShubratoDn/PhoneDeck">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5a11.5 11.5 0 0 0-3.64 22.41c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.52-1.33-1.28-1.69-1.28-1.69-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.2 1.77 1.2 1.03 1.77 2.71 1.26 3.37.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.47.11-3.06 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.77 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.77.11 3.06.74.81 1.19 1.84 1.19 3.1 0 4.42-2.7 5.4-5.26 5.68.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .5Z"/></svg>
+        View on GitHub
+      </a>
+    </div>
+    <p class="meta">Version 1.0.0 · Android 9 or newer · Free and ad-free</p>
+    <div class="shot-hero">
+      <img src="screenshots/ets2-controller.png" width="2400" height="1080"
+           alt="PhoneDeck ETS2 truck controller on an Android phone: steering wheel, gas and brake pedals, gear shifter and cockpit switches">
+    </div>
+  </div>
+
+  <section id="features">
+    <div class="wrap">
+      <h2>Everything in one app</h2>
+      <p class="sub">PC control over Bluetooth, phone-to-PC over Wi-Fi, and a toolbox for the phone itself.</p>
+      <div class="grid">
+        <div class="card"><div class="ico" style="background:rgba(249,115,22,.14)">🚚</div>
+          <h3>ETS2 steering wheel</h3><p>Wheel or tilt steering, analog gas and brake, shifter, retarder, cruise control and every cockpit switch.</p></div>
+        <div class="card"><div class="ico" style="background:rgba(56,189,248,.14)">⌨️</div>
+          <h3>Keyboard &amp; mouse</h3><p>Full keyboard, touchpad with gestures, num pad and media keys. Your PC sees a normal Bluetooth keyboard and mouse.</p></div>
+        <div class="card"><div class="ico" style="background:rgba(239,68,68,.14)">🎯</div>
+          <h3>Presentation remote</h3><p>Change slides with the volume keys, run a talk timer and aim the laser pointer by pointing the phone.</p></div>
+        <div class="card"><div class="ico" style="background:rgba(45,212,191,.14)">📁</div>
+          <h3>Wi-Fi file transfer</h3><p>Send files, folders, text and the clipboard between your phone and any PC browser, or PC to PC.</p></div>
+        <div class="card"><div class="ico" style="background:rgba(251,113,133,.14)">👁️</div>
+          <h3>Live View</h3><p>Watch the phone camera or screen live in a browser: a security cam, document camera or screen mirror.</p></div>
+        <div class="card"><div class="ico" style="background:rgba(52,211,153,.14)">🧰</div>
+          <h3>15+ phone tools</h3><p>Hardware and sensor tests, battery health, storage, screen time, GPS speedometer with routes, QR tools.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section style="padding-top:0">
+    <div class="wrap">
+      <div class="feature">
+        <div>
+          <span class="tag" style="color:var(--orange)">Truck simulators</span>
+          <h3>Use your phone as a steering wheel for Euro Truck Simulator 2</h3>
+          <ul>
+            <li>Steering from 360° to 1800°, or turn the whole phone like a wheel</li>
+            <li>Analog gas and brake with a gentle, adjustable brake</li>
+            <li>Vertical shifter, retarder and cruise control within thumb reach</li>
+            <li>Lights, beacon, blinkers, hazards, wipers, diff lock, lift axle, trailer, horn</li>
+            <li>Shows up as a standard Bluetooth game controller, no drivers</li>
+          </ul>
+        </div>
+        <img src="screenshots/ets2-controller.png" alt="Phone used as an ETS2 steering wheel with pedals and shifter" loading="lazy" width="2400" height="1080">
+      </div>
+
+      <div class="feature flip">
+        <div>
+          <span class="tag" style="color:var(--sky)">Bluetooth</span>
+          <h3>Control your PC with your phone, no app on the PC</h3>
+          <ul>
+            <li>Keyboard + touchpad, full 104-key keyboard or num pad</li>
+            <li>Two- and three-finger gestures, scrolling and drag</li>
+            <li>Type on PC: paste long text or a password and the PC types it</li>
+            <li>Works with Windows, macOS and Linux over standard Bluetooth</li>
+          </ul>
+        </div>
+        <img src="screenshots/keyboard-touchpad.png" alt="Phone as a Bluetooth keyboard and touchpad for a PC" loading="lazy">
+      </div>
+
+      <div class="feature">
+        <div>
+          <span class="tag" style="color:var(--teal)">Wi-Fi</span>
+          <h3>Move files between your phone and PC from any browser</h3>
+          <ul>
+            <li>Same Wi-Fi or a hotspot; files go straight between the devices</li>
+            <li>Send to one device or everyone, laptop to laptop through the phone</li>
+            <li>Clipboard sync and text sharing</li>
+            <li>Every new browser must be approved on the phone</li>
+          </ul>
+        </div>
+        <img class="portrait" src="screenshots/file-transfer.png" alt="PhoneDeck File Transfer on the phone with the address to open on a PC" loading="lazy">
+      </div>
+
+      <div class="feature flip">
+        <div>
+          <span class="tag" style="color:#34D399">On the road</span>
+          <h3>GPS speedometer with trip routes on a map</h3>
+          <ul>
+            <li>Speed, distance, trip time, max and average speed</li>
+            <li>Keeps recording with the screen off</li>
+            <li>Every trip's route on OpenStreetMap, coloured by speed</li>
+            <li>Export routes as GPX</li>
+          </ul>
+        </div>
+        <img class="portrait" src="screenshots/speedometer.png" alt="GPS speedometer with trip statistics" loading="lazy">
+      </div>
+    </div>
+  </section>
+
+  <section id="how">
+    <div class="wrap">
+      <h2>How it works</h2>
+      <p class="sub">Three steps, about two minutes.</p>
+      <div class="grid steps">
+        <div class="card"><h3>Install the APK</h3><p>Download PhoneDeck from the GitHub releases page and open it on your Android phone.</p></div>
+        <div class="card"><h3>Pair once</h3><p>Tap <em>Make visible</em> in the app and add the phone in your PC's Bluetooth settings. It reconnects by itself afterwards.</p></div>
+        <div class="card"><h3>Play, type or transfer</h3><p>Pick a tool. In ETS2 select <em>TruckPad</em> as the controller and bind the controls.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="faq">
+    <div class="wrap">
+      <h2>FAQ</h2>
+      <details><summary>Do I need to install anything on my PC?</summary>
+        <p>No. The steering wheel, keyboard and mouse use Bluetooth like any wireless gamepad or keyboard. File Transfer and Live View open in a normal web browser.</p></details>
+      <details><summary>Can I use my phone as a steering wheel for Euro Truck Simulator 2?</summary>
+        <p>Yes. PhoneDeck appears as a standard Bluetooth game controller with a steering axis, gas and brake pedals and buttons for every cockpit function. Steer with the on-screen wheel or by turning the phone.</p></details>
+      <details><summary>Does it work with American Truck Simulator and other games?</summary>
+        <p>Any game that supports game controllers can use it. The layout is designed around Euro Truck Simulator 2, which shares its controls with American Truck Simulator.</p></details>
+      <details><summary>Do I need root?</summary>
+        <p>No. Only the optional Charging Animation tool needs a rooted phone with LSPosed.</p></details>
+      <details><summary>Which phones are supported?</summary>
+        <p>Android 9 or newer. A few manufacturer systems turn off the Bluetooth HID Device profile; on those the PC tools can't connect, but every phone tool still works.</p></details>
+    </div>
+  </section>
+
+  <div class="final wrap">
+    <h2>Turn your phone into a PC controller</h2>
+    <p>Free, open on GitHub, and no software on the PC.</p>
+    <a class="btn primary" href="https://github.com/ShubratoDn/PhoneDeck/releases/latest">Download PhoneDeck 1.0.0</a>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>© 2026 Shubrato Debnath · <a href="https://github.com/ShubratoDn/PhoneDeck">PhoneDeck on GitHub</a></span>
+    <span>Not affiliated with or endorsed by SCS Software. Euro Truck Simulator 2 is a trademark of SCS Software.</span>
+  </div>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://shubratodn.github.io/PhoneDeck/sitemap.xml

@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108" width="108" height="108">
+  <!-- PhoneDeck logo: a deck of cards whose front card is a phone full of tools -->
+  <defs>
+    <radialGradient id="bg" cx="54" cy="44" r="76" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1C2436"/>
+      <stop offset="1" stop-color="#080B12"/>
+    </radialGradient>
+    <linearGradient id="front" x1="40" y1="24" x2="74" y2="84" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2DD4BF"/>
+      <stop offset="1" stop-color="#3B82F6"/>
+    </linearGradient>
+  </defs>
+  <rect width="108" height="108" rx="24" fill="url(#bg)"/>
+  <g transform="translate(4.5 0) translate(54 54) scale(0.8) translate(-54 -54)">
+    <path transform="rotate(-18 57 84)" fill="#4F46E5" d="M48,24h18a8,8 0 0 1 8,8v44a8,8 0 0 1 -8,8h-18a8,8 0 0 1 -8,-8v-44a8,8 0 0 1 8,-8Z"/>
+    <path transform="rotate(-9 57 84)" fill="#0284C7" d="M48,24h18a8,8 0 0 1 8,8v44a8,8 0 0 1 -8,8h-18a8,8 0 0 1 -8,-8v-44a8,8 0 0 1 8,-8Z"/>
+    <path fill="url(#front)" d="M48,24h18a8,8 0 0 1 8,8v44a8,8 0 0 1 -8,8h-18a8,8 0 0 1 -8,-8v-44a8,8 0 0 1 8,-8Z"/>
+    <path fill="#0B1220" d="M48,29h18a5,5 0 0 1 5,5v40a5,5 0 0 1 -5,5h-18a5,5 0 0 1 -5,-5v-40a5,5 0 0 1 5,-5Z"/>
+    <rect x="46" y="34" width="9.5" height="9.5" rx="2.4" fill="#F97316"/>
+    <rect x="58.5" y="34" width="9.5" height="9.5" rx="2.4" fill="#22C55E"/>
+    <rect x="46" y="46.5" width="9.5" height="9.5" rx="2.4" fill="#38BDF8"/>
+    <rect x="58.5" y="46.5" width="9.5" height="9.5" rx="2.4" fill="#A78BFA"/>
+    <rect x="46" y="59" width="9.5" height="9.5" rx="2.4" fill="#FBBF24"/>
+    <rect x="58.5" y="59" width="9.5" height="9.5" rx="2.4" fill="#F472B6"/>
+    <rect x="52" y="73" width="8" height="1.4" rx="0.7" fill="#334155"/>
+    <circle cx="57" cy="31.4" r="0.9" fill="#334155"/>
+  </g>
+</svg>

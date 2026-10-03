@@ -36,16 +36,19 @@ You can either use a ready-made APK file or build it from the source code.
 
 ### Option A — Use a ready-made APK
 
-If an APK file (`PhoneDeck.apk` or `app-debug.apk`) is attached to the repository's **Releases**
-page, download it to your phone or PC and continue with
-[step 3](#3-install-the-app-on-your-phone).
+Download **PhoneDeck-x.y.z.apk** from the
+[latest release](https://github.com/ShubratoDn/PhoneDeck/releases/latest) to your phone or PC and
+continue with [step 3](#3-install-the-app-on-your-phone).
+
+> Updating from a self-built (debug) copy to a release download? Android only updates an app when
+> both are signed with the same key, so uninstall the old copy first.
 
 ### Option B — Build the APK from source
 
 1. Download the project:
    ```bash
-   git clone https://github.com/ShubratoDn/AndroidLife.git
-   cd AndroidLife/android
+   git clone https://github.com/ShubratoDn/PhoneDeck.git
+   cd PhoneDeck/android
    ```
    Or use **Code → Download ZIP** on GitHub, extract it and open the `android` folder in a terminal.
 
